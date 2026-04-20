@@ -1,0 +1,2479 @@
+<!-- Product Specification & Flow Map -->
+# Продукт: Terminal Architect (Graphite Edition)
+
+## Описание
+Интеллектуальная среда для инженеров и 3D-визуализаторов, позволяющая конвертировать промпты в структурированный JSON и обратно, управлять библиотекой лучших практик и обращаться к техническому словарю.
+
+## Основные сценарии (Flows)
+1. **Конвертация:** Ввод текста -> Перевод (опционально) -> Получение JSON -> Копирование/Экспорт.
+2. **Обратная конвертация:** Ввод JSON -> Получение читаемого текста.
+3. **Управление знаниями:** Просмотр избранных промптов -> Редактирование -> Поиск.
+4. **Обучение и справочник:** Навигация по 3D глоссарию -> Изучение советов команды -> Добавление терминов в текущий промпт.
+
+## Структура переходов
+- **Нижняя панель (Mobile) / Боковое меню (Desktop):**
+    - `CONSTRUCT` (Конвертер)
+    - `HISTORY` (История)
+    - `FAVORITES` (Избранное)
+    - `GLOSSARY / REPO` (Глоссарий)
+    - `SETTINGS / SYSTEM` (Настройки)
+
+## Дизайн-код
+- **Система:** Obsidian Core (Graphite Gray)
+- **Цвета:** Глубокий графит, акценты белого и светло-серого.
+- **Типографика:** Inter / JetBrains Mono.
+
+<!-- Interactive Mobile Hub -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#45474a",
+                        "outline": "#919191",
+                        "on-secondary": "#1a1c1f",
+                        "tertiary-fixed": "#5c5f63",
+                        "surface-tint": "#c6c6c6",
+                        "on-tertiary-fixed": "#ffffff",
+                        "inverse-primary": "#5d5f5f",
+                        "secondary-fixed": "#c6c6ca",
+                        "on-surface-variant": "#c6c6c6",
+                        "primary-fixed-dim": "#454747",
+                        "surface-container": "#1e2022",
+                        "on-tertiary": "#191c1f",
+                        "secondary-fixed-dim": "#aaabaf",
+                        "primary-container": "#d4d4d4",
+                        "surface-variant": "#333537",
+                        "surface-container-high": "#282a2c",
+                        "on-background": "#e2e2e5",
+                        "surface-container-low": "#1a1c1e",
+                        "on-secondary-container": "#e2e2e6",
+                        "on-error": "#690005",
+                        "outline-variant": "#474747",
+                        "on-tertiary-fixed-variant": "#e1e2e7",
+                        "surface": "#121416",
+                        "inverse-on-surface": "#2f3133",
+                        "surface-bright": "#37393b",
+                        "surface-container-highest": "#333537",
+                        "primary": "#ffffff",
+                        "on-surface": "#e2e2e5",
+                        "on-tertiary-container": "#000000",
+                        "on-error-container": "#ffdad6",
+                        "tertiary": "#e1e2e7",
+                        "error": "#ffb4ab",
+                        "on-primary": "#1a1c1c",
+                        "tertiary-fixed-dim": "#44474b",
+                        "surface-dim": "#121416",
+                        "on-secondary-fixed-variant": "#3a3b3f",
+                        "inverse-surface": "#e2e2e5",
+                        "secondary": "#c6c6ca",
+                        "tertiary-container": "#8e9195",
+                        "on-secondary-fixed": "#1a1c1f",
+                        "error-container": "#93000a",
+                        "primary-fixed": "#5d5f5f",
+                        "on-primary-fixed-variant": "#e2e2e2",
+                        "on-primary-fixed": "#ffffff",
+                        "on-primary-container": "#000000",
+                        "surface-container-lowest": "#0c0e10",
+                        "background": "#121416"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #121416; color: #e2e2e5; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-panel { background: rgba(55, 57, 59, 0.6); backdrop-filter: blur(20px); }
+        .milled-surface { background: linear-gradient(145deg, #1e2022, #121416); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased overflow-x-hidden">
+<!-- Top Navigation Anchor -->
+<header class="fixed top-0 w-full z-50 bg-[#121416] flex items-center justify-between px-6 h-16 w-full">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-white" data-icon="precision_manufacturing">precision_manufacturing</span>
+<h1 class="text-white font-inter tracking-tight font-bold uppercase text-lg font-black tracking-tighter">PROMPT_LAB</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#C6C6CA] cursor-pointer" data-icon="search">search</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border border-outline-variant/15 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Cybernetic profile avatar with blue glowing circuits on a dark metallic surface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmK_KxeDj1IX8a2FshcP2W3pIX66JlCPgjmTHodcMLBIsvu5MDV55Sf6zrXNWCoTyfXb6u0gS7gSPdrmI3mnr-MH3cp5NVsYlZXJ-_88pI5Yc5JjAFX5meYy3j2o6A2lOeXlroSDAgx9i55znaryigtbEDQgea6gyog3mnPQ_if2dFbwNSD85jlTQWB5AlJBOCmml9hFExTzE-sxL36cO7Df3nceqcCe1JDletF4mqrf5GKvSQg7Kxp67JQhJ90QcXJLaoastBD6c"/>
+</div>
+</div>
+</header>
+<!-- Desktop Sidebar (Hidden on Mobile) -->
+<aside class="h-screen w-64 fixed left-0 top-0 hidden md:block bg-[#1A1C1E] flex flex-col p-4 space-y-2">
+<div class="text-xl font-bold text-white mb-8 px-2">CORE_NAV</div>
+<nav class="flex flex-col space-y-1">
+<a class="bg-[#1E2022] text-white rounded flex items-center gap-3 p-3 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="architecture">architecture</span>
+<span class="font-inter text-sm font-medium tracking-wide">Construct</span>
+</a>
+<a class="text-[#C6C6CA] hover:bg-[#1E2022] hover:text-white rounded flex items-center gap-3 p-3 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-inter text-sm font-medium tracking-wide">History</span>
+</a>
+<a class="text-[#C6C6CA] hover:bg-[#1E2022] hover:text-white rounded flex items-center gap-3 p-3 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="star">star</span>
+<span class="font-inter text-sm font-medium tracking-wide">Favorites</span>
+</a>
+<a class="text-[#C6C6CA] hover:bg-[#1E2022] hover:text-white rounded flex items-center gap-3 p-3 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="font-inter text-sm font-medium tracking-wide">Glossary</span>
+</a>
+</nav>
+</aside>
+<!-- Main Canvas -->
+<main class="pt-20 pb-24 md:pl-72 px-4 min-h-screen">
+<!-- Dashboard Data Ribbon -->
+<section class="w-full bg-surface-container-highest rounded-lg mb-8 p-3 flex justify-around items-center overflow-x-auto whitespace-nowrap gap-6 no-scrollbar">
+<div class="flex flex-col">
+<span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Active_Nodes</span>
+<span class="text-primary font-mono text-lg">12.80</span>
+</div>
+<div class="w-px h-8 bg-outline-variant/30"></div>
+<div class="flex flex-col">
+<span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Latency_MS</span>
+<span class="text-primary font-mono text-lg">42</span>
+</div>
+<div class="w-px h-8 bg-outline-variant/30"></div>
+<div class="flex flex-col">
+<span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Token_Flux</span>
+<span class="text-primary font-mono text-lg">0.998</span>
+</div>
+</section>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Main Construct Card (Priority) -->
+<div class="md:col-span-2 bg-surface-container rounded-xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[280px]">
+<div class="relative z-10">
+<span class="text-on-surface-variant text-[10px] uppercase tracking-widest font-bold mb-2 block">Primary Engine</span>
+<h2 class="text-3xl font-extrabold tracking-tighter text-white mb-4 leading-none">TERMINAL<br/>ARCHITECT</h2>
+<p class="text-on-surface-variant text-sm max-w-xs mb-6">Initialize visual code structures from semantic natural language parameters.</p>
+</div>
+<div class="relative z-10">
+<button class="bg-primary text-on-primary px-5 py-2.5 rounded-md font-bold text-sm tracking-tight flex items-center gap-2 active:scale-95 transition-transform">
+                        INITIALIZE CONSTRUCT
+                        <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- Background Image Decoration -->
+<div class="absolute right-0 bottom-0 top-0 w-1/2 opacity-40">
+<img class="w-full h-full object-cover" data-alt="Abstract 3D crystalline structure in monochrome shades of graphite and silver, with sharp edges and dramatic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBzuvWB_-DweiutZmGjxTbunYaEnkI9kSMUie0TaVjJT1aKVYygfycMtNwKWAb_Keqtb35J9tsqaIUoxwNp-Z8sKrNQ6sOupMoata5BzWI6YQ7A9Eqzb55ojLq3J9D-SaKzdbeU_5NAVS4jHes3k9QwjdHva3xE9mB_1aTMlnGOYwtAWtUsuNZ93b9DyYvkWXVD7-NgAH01qP0I9r2HC71-LItwCtwnpW59pvTURq7E2Rfd9QkGZauulh2AszF1_dv6cc-Vt_axfEo"/>
+</div>
+<div class="absolute inset-0 bg-gradient-to-r from-surface-container via-surface-container/80 to-transparent"></div>
+</div>
+<!-- Quick Favorites Card -->
+<div class="bg-surface-container-low rounded-xl p-5 flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<h3 class="text-sm font-bold uppercase tracking-widest text-white">Saved_Presets</h3>
+<span class="material-symbols-outlined text-on-surface-variant text-lg" data-icon="star">star</span>
+</div>
+<div class="space-y-3">
+<div class="p-3 bg-surface-container rounded-lg border-l-2 border-primary flex items-center justify-between">
+<span class="text-xs font-mono">Neural_Net_V4</span>
+<span class="material-symbols-outlined text-xs text-on-surface-variant" data-icon="more_vert">more_vert</span>
+</div>
+<div class="p-3 bg-surface-container rounded-lg border-l-2 border-outline-variant flex items-center justify-between">
+<span class="text-xs font-mono">Quantum_API_Shell</span>
+<span class="material-symbols-outlined text-xs text-on-surface-variant" data-icon="more_vert">more_vert</span>
+</div>
+<div class="p-3 bg-surface-container rounded-lg border-l-2 border-outline-variant flex items-center justify-between">
+<span class="text-xs font-mono">Glass_UI_Template</span>
+<span class="material-symbols-outlined text-xs text-on-surface-variant" data-icon="more_vert">more_vert</span>
+</div>
+</div>
+</div>
+<!-- JSON to Text Transformer Card -->
+<div class="md:col-span-1 bg-surface-container rounded-xl p-6 flex flex-col gap-4 border border-outline-variant/10">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-secondary-container rounded-lg">
+<span class="material-symbols-outlined text-white" data-icon="data_object">data_object</span>
+</div>
+<h3 class="text-sm font-bold uppercase tracking-widest text-white">JSON_TO_TEXT</h3>
+</div>
+<div class="bg-surface-container-lowest rounded p-4 font-mono text-[11px] text-on-surface-variant min-h-[120px] relative">
+<div class="flex items-center gap-1 mb-2">
+<span class="text-error">"status"</span>: <span class="text-secondary">"ready"</span>,
+                    </div>
+<div class="flex items-center gap-1 mb-2">
+<span class="text-error">"buffer"</span>: <span class="text-primary">1024</span>,
+                    </div>
+<div class="flex items-center gap-1">
+<span class="text-error">"origin"</span>: <span class="text-secondary">"local_host"</span>
+</div>
+<button class="absolute bottom-3 right-3 p-2 bg-primary rounded-full text-on-primary active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-sm" data-icon="swap_horiz">swap_horiz</span>
+</button>
+</div>
+<p class="text-[10px] text-on-surface-variant">Convert complex JSON schemas into readable technical documentation strings.</p>
+</div>
+<!-- Glossary / Knowledge Base Card -->
+<div class="md:col-span-2 bg-surface-container-high rounded-xl p-6 flex items-center gap-6">
+<div class="hidden sm:block w-24 h-24 rounded-lg overflow-hidden shrink-0">
+<img class="w-full h-full object-cover grayscale opacity-50" data-alt="Extreme macro of a sleek laptop keyboard with dark keys and white glowing backlights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD61GMMQwAl_IC5_PPPsVuQjiencjdbvR0miKUfTWdgGuhsx6vpMkL62FYMeBz9ScDfKuRd5jVPTlxlLwDHQc5Ifjp4enbKe7EnML0oxAQclSQkOZiqU_OlQYJF0208fxCnA-umsVPuLtIKxKYbXaW7mJogm8ZhTEU3Jtq5LC0Ijwv3pxSQU_sh9wxMPgc0tv_JZIXBd9zBcakWRTM5dr2YHRCjntxHkAs2OPVPPQeyKzKE1xS1OlusvKGlT9MdrxrdjV-hRMd5s80"/>
+</div>
+<div class="flex-grow">
+<h3 class="text-white font-bold mb-2">CORE_GLOSSARY</h3>
+<p class="text-on-surface-variant text-xs mb-4">Master the syntax of the Architect. 250+ technical definitions updated daily.</p>
+<div class="flex gap-2">
+<span class="bg-surface-container px-2 py-1 rounded text-[9px] font-mono text-secondary-fixed">#SYNTAX</span>
+<span class="bg-surface-container px-2 py-1 rounded text-[9px] font-mono text-secondary-fixed">#LOGIC</span>
+<span class="bg-surface-container px-2 py-1 rounded text-[9px] font-mono text-secondary-fixed">#FLUX</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-primary ml-auto" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Shell (Mobile Only) -->
+<nav class="fixed bottom-0 w-full z-50 md:hidden bg-[#1A1C1E] flex justify-around items-center px-4 h-16 w-full border-t border-[#474747]/15 shadow-[0_-4px_24px_-4px_rgba(0,0,0,0.12)]">
+<a class="flex flex-col items-center justify-center text-white bg-[#1E2022] rounded-lg py-1 w-full active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="architecture">architecture</span>
+<span class="font-inter text-[10px] uppercase font-bold tracking-widest">Construct</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#C6C6CA] py-1 w-full hover:text-white active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-inter text-[10px] uppercase font-bold tracking-widest">History</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#C6C6CA] py-1 w-full hover:text-white active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="star">star</span>
+<span class="font-inter text-[10px] uppercase font-bold tracking-widest">Favorites</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#C6C6CA] py-1 w-full hover:text-white active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="font-inter text-[10px] uppercase font-bold tracking-widest">Glossary</span>
+</a>
+</nav>
+<!-- Contextual Floating Action Button -->
+<button class="fixed bottom-20 right-6 md:right-8 md:bottom-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-xl flex items-center justify-center z-40 active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</body></html>
+
+<!-- Interactive Desktop Hub -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=JetBrains+Mono:wght@400;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#45474a",
+                        "outline": "#919191",
+                        "on-secondary": "#1a1c1f",
+                        "tertiary-fixed": "#5c5f63",
+                        "surface-tint": "#c6c6c6",
+                        "on-tertiary-fixed": "#ffffff",
+                        "inverse-primary": "#5d5f5f",
+                        "secondary-fixed": "#c6c6ca",
+                        "on-surface-variant": "#c6c6c6",
+                        "primary-fixed-dim": "#454747",
+                        "surface-container": "#1e2022",
+                        "on-tertiary": "#191c1f",
+                        "secondary-fixed-dim": "#aaabaf",
+                        "primary-container": "#d4d4d4",
+                        "surface-variant": "#333537",
+                        "surface-container-high": "#282a2c",
+                        "on-background": "#e2e2e5",
+                        "surface-container-low": "#1a1c1e",
+                        "on-secondary-container": "#e2e2e6",
+                        "on-error": "#690005",
+                        "outline-variant": "#474747",
+                        "on-tertiary-fixed-variant": "#e1e2e7",
+                        "surface": "#121416",
+                        "inverse-on-surface": "#2f3133",
+                        "surface-bright": "#37393b",
+                        "surface-container-highest": "#333537",
+                        "primary": "#ffffff",
+                        "on-surface": "#e2e2e5",
+                        "on-tertiary-container": "#000000",
+                        "on-error-container": "#ffdad6",
+                        "tertiary": "#e1e2e7",
+                        "error": "#ffb4ab",
+                        "on-primary": "#1a1c1c",
+                        "tertiary-fixed-dim": "#44474b",
+                        "surface-dim": "#121416",
+                        "on-secondary-fixed-variant": "#3a3b3f",
+                        "inverse-surface": "#e2e2e5",
+                        "secondary": "#c6c6ca",
+                        "tertiary-container": "#8e9195",
+                        "on-secondary-fixed": "#1a1c1f",
+                        "error-container": "#93000a",
+                        "primary-fixed": "#5d5f5f",
+                        "on-primary-fixed-variant": "#e2e2e2",
+                        "on-primary-fixed": "#ffffff",
+                        "on-primary-container": "#000000",
+                        "surface-container-lowest": "#0c0e10",
+                        "background": "#121416"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #121416;
+            color: #e2e2e5;
+            font-family: 'Inter', sans-serif;
+        }
+        .milled-shadow {
+            box-shadow: 0 4px 24px -4px rgba(0,0,0,0.4);
+        }
+        .glass-panel {
+            background: rgba(55, 57, 59, 0.6);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-surface selection:bg-primary selection:text-on-primary">
+<!-- TopAppBar Shell -->
+<header class="fixed top-0 w-full z-50 bg-[#121416] flex items-center justify-between px-6 h-16 w-full">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-white text-2xl" data-icon="precision_manufacturing">precision_manufacturing</span>
+<h1 class="font-inter tracking-tight font-bold uppercase text-lg font-black tracking-tighter text-white">PROMPT_LAB</h1>
+</div>
+<div class="flex items-center gap-6">
+<div class="hidden md:flex items-center gap-4">
+<button class="text-[#C6C6CA] hover:bg-[#333537] transition-colors px-3 py-1 rounded text-sm font-medium cursor-pointer active:scale-95">SYSTEM_STATUS: NOMINAL</button>
+<button class="text-white hover:bg-[#333537] transition-colors px-3 py-1 rounded text-sm font-medium cursor-pointer active:scale-95">v4.0.2-STABLE</button>
+</div>
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center border border-outline-variant/15">
+<span class="material-symbols-outlined text-sm" data-icon="person">person</span>
+</div>
+</div>
+</header>
+<!-- Sidebar Navigation Shell -->
+<aside class="h-screen w-64 fixed left-0 top-0 hidden md:block bg-[#1A1C1E] flex flex-col p-4 space-y-2 pt-20">
+<div class="text-xl font-bold text-white mb-8 px-2">CORE_NAV</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 bg-[#1E2022] text-white rounded transition-all duration-200 ease-in-out cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="architecture">architecture</span>
+<span class="font-inter text-sm font-medium tracking-wide">Construct</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#C6C6CA] hover:bg-[#1E2022] hover:text-white rounded transition-all duration-200 ease-in-out cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-inter text-sm font-medium tracking-wide">History</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#C6C6CA] hover:bg-[#1E2022] hover:text-white rounded transition-all duration-200 ease-in-out cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="star">star</span>
+<span class="font-inter text-sm font-medium tracking-wide">Favorites</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#C6C6CA] hover:bg-[#1E2022] hover:text-white rounded transition-all duration-200 ease-in-out cursor-pointer" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="font-inter text-sm font-medium tracking-wide">Glossary</span>
+</a>
+</nav>
+<div class="mt-auto p-2 bg-surface-container rounded-lg">
+<div class="text-[10px] uppercase tracking-widest text-outline mb-2">Power Consumption</div>
+<div class="h-1 bg-surface-container-low w-full rounded-full overflow-hidden">
+<div class="h-full bg-primary w-2/3"></div>
+</div>
+<div class="flex justify-between mt-1 font-mono text-[9px] text-outline">
+<span>742 KW/H</span>
+<span>82%</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Stage -->
+<main class="md:ml-64 pt-16 min-h-screen">
+<!-- Data Ribbon Component -->
+<section class="bg-surface-container-highest px-6 py-2 flex items-center justify-between border-y border-outline-variant/10">
+<div class="flex gap-8 overflow-x-auto no-scrollbar">
+<div class="flex items-center gap-2 whitespace-nowrap">
+<span class="text-[10px] text-outline font-bold uppercase tracking-tighter">Latencies</span>
+<span class="font-mono text-sm text-primary">12ms</span>
+</div>
+<div class="flex items-center gap-2 whitespace-nowrap">
+<span class="text-[10px] text-outline font-bold uppercase tracking-tighter">Active Nodes</span>
+<span class="font-mono text-sm text-primary">1,024</span>
+</div>
+<div class="flex items-center gap-2 whitespace-nowrap">
+<span class="text-[10px] text-outline font-bold uppercase tracking-tighter">Throughput</span>
+<span class="font-mono text-sm text-primary">8.4 GB/S</span>
+</div>
+<div class="flex items-center gap-2 whitespace-nowrap">
+<span class="text-[10px] text-outline font-bold uppercase tracking-tighter">Sync Mode</span>
+<span class="font-mono text-sm text-primary">QUARTZ</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-[10px] text-outline font-bold uppercase">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                LIVE_FEED
+            </div>
+</section>
+<div class="p-8">
+<!-- Bento Grid Dashboard (SCREEN_20) -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Large 3D Viewport / Hero Section -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container rounded-xl overflow-hidden relative group">
+<img class="w-full h-[450px] object-cover opacity-60 mix-blend-screen grayscale transition-transform duration-700 group-hover:scale-105" data-alt="Monochrome 3D wireframe architecture of a server room with glowing blue data streams and futuristic hardware silhouettes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1TkVSufW_98gtuJkikuthuUqvk018aLp6lL8ntzWa-SORZLVkFjnrVYeOXIHG-IcL7xuDqIT1jipsSDCTcgumg8u-npX_zSEE9IwZsDauSX37ocv-IC62Z39D9qN8eDF5SbFxXCfWynKhio5neWLy2ak146nMrrAB9s_nlewrQu8Yxx8ybeDano_GoG0vNWAj-RgpSFQKC9_ZkBNJbbsZzGtYgmupzQ5C8E-socUXTnIK1JNqVGCiD7peaOy59ZGyq_jtIh1lJBw"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<div class="absolute bottom-8 left-8 right-8">
+<div class="flex items-end justify-between">
+<div>
+<h2 class="text-4xl font-bold tracking-tight mb-2">Terminal Architect v4</h2>
+<p class="text-on-surface-variant max-w-md">Initialize high-performance neural nodes and orchestrate complex data flows within the obsidian core environment.</p>
+</div>
+<button class="bg-primary text-on-primary px-6 py-3 rounded-md font-bold text-sm tracking-wide active:scale-95 transition-transform">
+                                INITIATE_CONSTRUCT
+                            </button>
+</div>
+</div>
+</div>
+<!-- Secondary Metric Card -->
+<div class="col-span-12 lg:col-span-4 bg-surface-container rounded-xl p-6 flex flex-col justify-between border border-outline-variant/5">
+<div>
+<div class="flex justify-between items-start mb-6">
+<span class="material-symbols-outlined text-outline" data-icon="monitoring">monitoring</span>
+<span class="text-[10px] bg-outline-variant/20 px-2 py-1 rounded text-outline">REAL_TIME</span>
+</div>
+<h3 class="text-sm font-bold uppercase tracking-widest text-outline mb-1">Architecture integrity</h3>
+<div class="text-5xl font-black tracking-tighter mb-4">98.4<span class="text-lg text-outline ml-1">%</span></div>
+</div>
+<div class="space-y-4">
+<div class="h-32 w-full flex items-end gap-1 px-1">
+<div class="flex-1 bg-primary/20 h-1/2 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/20 h-2/3 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/40 h-3/4 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/60 h-1/2 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/30 h-4/5 rounded-t-sm"></div>
+<div class="flex-1 bg-primary h-full rounded-t-sm"></div>
+</div>
+<p class="text-[11px] text-on-surface-variant leading-relaxed">No anomalies detected in the last 24 orbital cycles. Fabric stability remains optimal for expansion.</p>
+</div>
+</div>
+<!-- Glossary Preview (SCREEN_5 Integration) -->
+<div class="col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-surface-container-low rounded-xl p-6 group hover:bg-surface-container transition-colors cursor-pointer border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="token">token</span>
+</div>
+<span class="font-mono text-xs text-outline">GLOS_01</span>
+</div>
+<h4 class="font-bold text-lg mb-2">Neural Linkage</h4>
+<p class="text-sm text-on-surface-variant">The fundamental protocol for connecting disparate data nodes across the obsidian mesh network.</p>
+</div>
+<div class="bg-surface-container-low rounded-xl p-6 group hover:bg-surface-container transition-colors cursor-pointer border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="database">database</span>
+</div>
+<span class="font-mono text-xs text-outline">GLOS_02</span>
+</div>
+<h4 class="font-bold text-lg mb-2">Entropy Buffer</h4>
+<p class="text-sm text-on-surface-variant">Prevents data decay by cycling temporal packets through a high-density graphite isolation chamber.</p>
+</div>
+<div class="bg-surface-container-low rounded-xl p-6 group hover:bg-surface-container transition-colors cursor-pointer border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+</div>
+<span class="font-mono text-xs text-outline">GLOS_03</span>
+</div>
+<h4 class="font-bold text-lg mb-2">Monolithic Mesh</h4>
+<p class="text-sm text-on-surface-variant">A non-hierarchical structure where every element maintains its own milled identity and depth profile.</p>
+</div>
+</div>
+<!-- Recent Construct History -->
+<div class="col-span-12 lg:col-span-12 bg-surface-container rounded-xl overflow-hidden">
+<div class="px-6 py-4 flex items-center justify-between border-b border-outline-variant/10">
+<h3 class="font-bold text-sm uppercase tracking-widest">Active Constructs</h3>
+<span class="material-symbols-outlined text-outline cursor-pointer" data-icon="filter_list">filter_list</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead class="bg-surface-container-low">
+<tr>
+<th class="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-outline">Construct ID</th>
+<th class="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-outline">Protocol</th>
+<th class="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-outline">Status</th>
+<th class="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-outline">Resources</th>
+<th class="px-6 py-3 text-[10px] font-bold uppercase tracking-widest text-outline text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="px-6 py-4 font-mono text-sm">ARCH-7729-X</td>
+<td class="px-6 py-4 text-sm">Graphite Obsidian</td>
+<td class="px-6 py-4">
+<span class="flex items-center gap-2 text-xs text-emerald-400">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                            STABILIZED
+                                        </span>
+</td>
+<td class="px-6 py-4">
+<div class="flex gap-1">
+<span class="w-4 h-1 bg-primary rounded-full"></span>
+<span class="w-4 h-1 bg-primary rounded-full"></span>
+<span class="w-4 h-1 bg-outline-variant rounded-full"></span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-white" data-icon="open_in_new">open_in_new</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="px-6 py-4 font-mono text-sm">ARCH-8012-Y</td>
+<td class="px-6 py-4 text-sm">Neural Sync</td>
+<td class="px-6 py-4">
+<span class="flex items-center gap-2 text-xs text-amber-400">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                            SYNCING
+                                        </span>
+</td>
+<td class="px-6 py-4">
+<div class="flex gap-1">
+<span class="w-4 h-1 bg-primary rounded-full"></span>
+<span class="w-4 h-1 bg-primary rounded-full"></span>
+<span class="w-4 h-1 bg-primary rounded-full"></span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-white" data-icon="open_in_new">open_in_new</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="px-6 py-4 font-mono text-sm">ARCH-2194-Z</td>
+<td class="px-6 py-4 text-sm">Legacy Shell</td>
+<td class="px-6 py-4">
+<span class="flex items-center gap-2 text-xs text-outline">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+                                            DORMANT
+                                        </span>
+</td>
+<td class="px-6 py-4">
+<div class="flex gap-1">
+<span class="w-4 h-1 bg-outline-variant rounded-full"></span>
+<span class="w-4 h-1 bg-outline-variant rounded-full"></span>
+<span class="w-4 h-1 bg-outline-variant rounded-full"></span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-white" data-icon="open_in_new">open_in_new</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar Shell (Mobile) -->
+<nav class="fixed bottom-0 w-full z-50 md:hidden bg-[#1A1C1E] border-t border-[#474747]/15 shadow-[0_-4px_24px_-4px_rgba(0,0,0,0.12)] flex justify-around items-center px-4 h-16 w-full">
+<a class="flex flex-col items-center justify-center text-white bg-[#1E2022] rounded-lg py-1 w-full active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="architecture">architecture</span>
+<span class="font-inter text-[10px] uppercase font-bold tracking-widest">Construct</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#C6C6CA] py-1 w-full hover:text-white active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-inter text-[10px] uppercase font-bold tracking-widest">History</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#C6C6CA] py-1 w-full hover:text-white active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="star">star</span>
+<span class="font-inter text-[10px] uppercase font-bold tracking-widest">Favorites</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#C6C6CA] py-1 w-full hover:text-white active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="font-inter text-[10px] uppercase font-bold tracking-widest">Glossary</span>
+</a>
+</nav>
+<!-- FAB Shell -->
+<button class="fixed bottom-24 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center md:bottom-8 group active:scale-90 transition-transform z-50">
+<span class="material-symbols-outlined text-2xl" data-icon="add" style="font-variation-settings: 'FILL' 1;">add</span>
+<span class="absolute right-full mr-4 bg-surface-container-highest px-3 py-1.5 rounded text-xs font-bold tracking-widest opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-outline-variant/20">NEW_CONSTRUCT</span>
+</button>
+</body></html>
+
+<!-- JSON to Text (Graphite Mobile) -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Terminal Architect - JSON to Text</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-fixed": "#111416",
+                      "inverse-primary": "#f2f0f4",
+                      "error-container": "#410002",
+                      "on-secondary": "#2c3135",
+                      "on-background": "#e2e2e6",
+                      "tertiary-fixed": "#dee3eb",
+                      "inverse-surface": "#e2e2e6",
+                      "surface-container-highest": "#333538",
+                      "surface-container": "#1e2022",
+                      "on-surface": "#e2e2e6",
+                      "on-error": "#ffffff",
+                      "on-tertiary-fixed-variant": "#44474e",
+                      "on-secondary-fixed-variant": "#41474d",
+                      "on-surface-variant": "#c4c7cc",
+                      "on-secondary-container": "#d7e3ef",
+                      "inverse-on-surface": "#1a1c1e",
+                      "surface-variant": "#44474e",
+                      "secondary-fixed": "#d7e3ef",
+                      "primary-fixed": "#e2e2e6",
+                      "outline-variant": "#44474e",
+                      "background": "#1a1c1e",
+                      "surface": "#1a1c1e",
+                      "tertiary-container": "#44474e",
+                      "secondary": "#bfc8d2",
+                      "on-primary-container": "#e2e2e6",
+                      "on-tertiary-container": "#ffffff",
+                      "on-secondary-fixed": "#111c27",
+                      "surface-container-lowest": "#0f1113",
+                      "on-tertiary": "#2e3136",
+                      "surface-container-high": "#282a2d",
+                      "surface-container-low": "#1a1c1e",
+                      "secondary-fixed-dim": "#bfc8d2",
+                      "primary-fixed-dim": "#c6c6ca",
+                      "on-primary-fixed-variant": "#47474b",
+                      "primary-container": "#333538",
+                      "primary": "#ffffff",
+                      "surface-dim": "#1a1c1e",
+                      "tertiary": "#c2c7cf",
+                      "tertiary-fixed-dim": "#c2c7cf",
+                      "outline": "#8e9196",
+                      "on-primary": "#2d3135",
+                      "surface-bright": "#39393c",
+                      "error": "#ffb4ab",
+                      "secondary-container": "#3f4850",
+                      "surface-tint": "#ffffff",
+                      "on-error-container": "#ffdad6",
+                      "on-primary-fixed": "#1a1c1e"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0px",
+                      "xl": "0px",
+                      "full": "0px"
+              },
+              "fontFamily": {
+                      "headline": ["Inter"],
+                      "body": ["Inter"],
+                      "label": ["Inter"],
+                      "mono": ["JetBrains Mono"]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .code-scroller::-webkit-scrollbar {
+            width: 4px;
+        }
+        .code-scroller::-webkit-scrollbar-thumb {
+            background: #44474e;
+        }
+        /* Obsidian Core specific: removing rounded corners for industrial feel */
+        * {
+            border-radius: 0 !important;
+        }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body min-h-screen selection:bg-primary-container/50">
+<!-- TopAppBar -->
+<header class="flex items-center justify-between px-6 h-16 w-full bg-surface border-b border-outline-variant/30 sticky top-0 z-40">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl">terminal</span>
+<span class="font-['Inter'] font-black text-xl tracking-tighter text-on-surface uppercase">TerminalArchitect</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex gap-8 mr-8">
+<span class="text-primary font-bold text-xs uppercase tracking-widest cursor-pointer active:opacity-70 transition-opacity">Convert</span>
+<span class="text-on-surface-variant font-medium text-xs uppercase tracking-widest cursor-pointer hover:text-on-surface transition-colors">History</span>
+<span class="text-on-surface-variant font-medium text-xs uppercase tracking-widest cursor-pointer hover:text-on-surface transition-colors">Favorites</span>
+</div>
+<div class="w-8 h-8 bg-surface-container-highest border border-outline-variant flex items-center justify-center overflow-hidden grayscale hover:grayscale-0 transition-all">
+<img alt="Developer Profile" class="w-full h-full object-cover" data-alt="close-up portrait of a digital avatar representing a high-end software engineer, sleek minimalist design" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxxfVnT62l1QtMTkizSDL23m90NRLisNI-EDR9kI1iG5QYwy8KLnsyGRM9wdK357SRWh6XZezIK6u3hWM_pJ4WP4mHWcFqa--VJHVo_JKJ2cw7NExcoBIuC9x8jgZDn-vPYoDja0MdTnUzzAliey7IPtw3xVzJMI73DaGc1qp1LeOKOIyegbpC6taB604rED5BJO820PPNvKpBSTCoWO38oXdRgashwXQtd3IYNRKg0R5uvO4o_KlzXPQjj5v7N-MYaz3TRJoDhJU"/>
+</div>
+</div>
+</header>
+<main class="max-w-6xl mx-auto px-4 pt-12 pb-32">
+<!-- Toggle Switcher Section -->
+<div class="flex justify-center mb-12">
+<div class="bg-surface-container-lowest border border-outline-variant/40 p-1 flex items-center gap-0">
+<button class="px-8 py-2 text-[10px] uppercase tracking-[0.2em] font-bold text-on-surface-variant hover:bg-surface-container transition-colors">
+                Prompt to JSON
+            </button>
+<button class="px-8 py-2 text-[10px] uppercase tracking-[0.2em] font-bold bg-primary text-on-primary">
+                JSON to Text
+            </button>
+</div>
+</div>
+<!-- Main Logic Canvas -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-px bg-outline-variant/20 border border-outline-variant/20">
+<!-- Input: JSON Block -->
+<section class="space-y-0 bg-surface p-6">
+<div class="flex items-center justify-between mb-4">
+<label class="flex items-center gap-2 text-on-surface-variant font-mono text-[10px] uppercase tracking-[0.3em]">
+<span class="w-1.5 h-1.5 bg-outline"></span>
+                    Raw Source (JSON)
+                </label>
+<span class="text-[9px] font-mono text-outline uppercase tracking-widest">Input Buffer</span>
+</div>
+<div class="relative group">
+<div class="relative bg-surface-container-lowest border border-outline-variant/30 min-h-[440px]">
+<div class="flex items-center gap-2 px-4 py-2 bg-surface-container border-b border-outline-variant/30">
+<div class="flex gap-2">
+<div class="w-2 h-2 bg-outline-variant"></div>
+<div class="w-2 h-2 bg-outline-variant"></div>
+<div class="w-2 h-2 bg-outline-variant"></div>
+</div>
+<span class="text-[10px] font-mono text-outline-variant ml-4 uppercase tracking-tighter">editor.json</span>
+</div>
+<textarea class="w-full h-[395px] bg-transparent border-none focus:ring-0 text-on-surface font-mono text-sm p-6 code-scroller resize-none placeholder:text-outline/30" placeholder='{ "action": "deconstruct", "source": "Paste your JSON object here..." }'></textarea>
+</div>
+</div>
+</section>
+<!-- Output: Plain Text Area -->
+<section class="space-y-0 bg-surface p-6">
+<div class="flex items-center justify-between mb-4">
+<label class="flex items-center gap-2 text-on-surface-variant font-mono text-[10px] uppercase tracking-[0.3em]">
+<span class="w-1.5 h-1.5 bg-primary"></span>
+                    Resulting Text Output
+                </label>
+<div class="flex items-center gap-4">
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-base">content_copy</span>
+</button>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-base">download</span>
+</button>
+</div>
+</div>
+<div class="bg-surface-container-low border border-outline-variant/30 min-h-[440px] p-8 relative flex flex-col">
+<div class="flex-1 text-on-surface leading-relaxed text-base font-body opacity-80">
+<p class="text-on-surface-variant italic font-light">The parsed content will appear here in human-readable format after processing...</p>
+</div>
+<!-- Aesthetic Detail: Texture -->
+<div class="absolute bottom-0 right-0 p-6 opacity-5 pointer-events-none grayscale">
+<span class="material-symbols-outlined text-8xl">format_align_left</span>
+</div>
+</div>
+</section>
+</div>
+<!-- Central Action -->
+<div class="flex flex-col items-center mt-16 gap-6">
+<button class="group relative px-12 py-4 bg-primary text-on-primary font-black uppercase tracking-[0.2em] text-xs transition-all hover:bg-on-surface-variant active:scale-[0.98] border border-primary">
+<div class="relative flex items-center gap-3">
+<span class="material-symbols-outlined text-sm">auto_fix_high</span>
+<span>Deconstruct to Text</span>
+</div>
+</button>
+<p class="text-[9px] font-mono text-outline uppercase tracking-[0.4em] opacity-60">Status: System Ready // Rev. 2.0</p>
+</div>
+<!-- Metadata Grid (Bottom) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-px bg-outline-variant/20 border border-outline-variant/20 mt-20">
+<div class="p-8 bg-surface hover:bg-surface-container transition-colors">
+<div class="text-outline mb-4">
+<span class="material-symbols-outlined text-xl">speed</span>
+</div>
+<h4 class="text-xs font-black uppercase tracking-widest mb-2">High-Speed Parsing</h4>
+<p class="text-[11px] text-on-surface-variant font-medium leading-relaxed uppercase tracking-tight">Asynchronous processing for massive nested arrays and deep objects.</p>
+</div>
+<div class="p-8 bg-surface hover:bg-surface-container transition-colors">
+<div class="text-outline mb-4">
+<span class="material-symbols-outlined text-xl">schema</span>
+</div>
+<h4 class="text-xs font-black uppercase tracking-widest mb-2">Schema Awareness</h4>
+<p class="text-[11px] text-on-surface-variant font-medium leading-relaxed uppercase tracking-tight">Automatically detects data patterns and optimizes text legibility.</p>
+</div>
+<div class="p-8 bg-surface hover:bg-surface-container transition-colors">
+<div class="text-outline mb-4">
+<span class="material-symbols-outlined text-xl">data_object</span>
+</div>
+<h4 class="text-xs font-black uppercase tracking-widest mb-2">Lossless Translation</h4>
+<p class="text-[11px] text-on-surface-variant font-medium leading-relaxed uppercase tracking-tight">No data dropped during the transformation from structured to narrative.</p>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-2 bg-surface border-t border-outline-variant/40 md:hidden">
+<button class="flex flex-col items-center justify-center bg-primary text-on-primary w-1/4 py-2 transition-all">
+<span class="material-symbols-outlined text-lg">sync_alt</span>
+<span class="font-['Inter'] text-[9px] font-black uppercase tracking-widest mt-1">Convert</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant w-1/4 py-2 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">history</span>
+<span class="font-['Inter'] text-[9px] font-bold uppercase tracking-widest mt-1">History</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant w-1/4 py-2 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 0;">star</span>
+<span class="font-['Inter'] text-[9px] font-bold uppercase tracking-widest mt-1">Favorites</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant w-1/4 py-2 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">settings</span>
+<span class="font-['Inter'] text-[9px] font-bold uppercase tracking-widest mt-1">Settings</span>
+</button>
+</nav>
+</body></html>
+
+<!-- 3D Glossary with Team Tips (Graphite) -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VisTerminal | 3D Technical Glossary (Obsidian Core)</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "primary": "#E2E2E2", // Graphite white/light grey
+            "on-primary": "#1A1C1E",
+            "background": "#121416",
+            "surface": "#1A1C1E", // Dark graphite grey
+            "surface-container": "#24272A",
+            "surface-container-low": "#1F2124",
+            "surface-container-lowest": "#0D0E10",
+            "surface-container-high": "#2D3135",
+            "surface-container-highest": "#383D42",
+            "outline": "#5C6166",
+            "outline-variant": "#41464B",
+            "secondary": "#91979E",
+            "tertiary": "#6A727A",
+            "error": "#CF6679",
+            "on-surface": "#E2E2E2",
+            "on-surface-variant": "#91979E"
+          },
+          "borderRadius": {
+            "DEFAULT": "4px",
+            "lg": "4px",
+            "xl": "4px",
+            "full": "4px"
+          },
+          "fontFamily": {
+            "headline": ["Inter"],
+            "body": ["Inter"],
+            "label": ["Inter"],
+            "mono": ["JetBrains Mono"]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+    .industrial-border {
+      border: 1px solid #41464B;
+    }
+    .mono-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #121416;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #383D42;
+    }
+    .active-nav {
+      background: #2D3135;
+      border-left: 2px solid #E2E2E2;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary selection:text-on-primary">
+<!-- TopNavBar Implementation -->
+<nav class="fixed top-0 z-50 w-full flex justify-between items-center px-6 py-3 bg-surface/95 border-b border-outline-variant/30 backdrop-blur-sm">
+<div class="flex items-center gap-8">
+<span class="text-xl font-black text-primary tracking-[0.2em] font-headline">VISTERMINAL</span>
+<div class="hidden md:flex items-center gap-6">
+<a class="text-primary font-semibold text-sm tracking-tight border-b border-primary pb-0.5" href="#">Glossary</a>
+<a class="text-on-surface-variant font-medium text-sm tracking-tight hover:text-primary transition-colors" href="#">Assets</a>
+<a class="text-on-surface-variant font-medium text-sm tracking-tight hover:text-primary transition-colors" href="#">Pipeline</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="bg-surface-container-lowest px-3 py-1.5 border border-outline-variant flex items-center gap-3">
+<span class="material-symbols-outlined text-outline text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-xs font-mono w-48 text-on-surface placeholder:text-outline-variant/50" placeholder="SCAN_PARAMETERS..." type="text"/>
+</div>
+<div class="flex gap-1">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</nav>
+<!-- SideNavBar Implementation -->
+<aside class="h-screen w-64 fixed left-0 top-0 pt-16 flex flex-col bg-surface border-r border-outline-variant/30">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-1">
+<div class="w-8 h-8 bg-surface-container-highest border border-outline flex items-center justify-center text-primary font-bold text-xs">V1</div>
+<div class="flex flex-col">
+<span class="text-primary font-bold font-mono text-[10px] uppercase tracking-tighter">GLOSSARY_STABLE</span>
+<span class="text-outline text-[9px] font-mono uppercase tracking-[0.2em]">Graphite Core Engine</span>
+</div>
+</div>
+</div>
+<nav class="flex-1 overflow-y-auto">
+<ul class="space-y-0">
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant py-3 px-6 hover:bg-surface-container-low transition-colors font-mono text-[11px] uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined text-lg">category</span>
+<span>General</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-primary bg-surface-container-high py-3 px-6 border-l-2 border-primary font-bold font-mono text-[11px] uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined text-lg">light_mode</span>
+<span>Lighting</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant py-3 px-6 hover:bg-surface-container-low transition-colors font-mono text-[11px] uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined text-lg">texture</span>
+<span>Materials</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant py-3 px-6 hover:bg-surface-container-low transition-colors font-mono text-[11px] uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined text-lg">memory</span>
+<span>Rendering</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant py-3 px-6 hover:bg-surface-container-low transition-colors font-mono text-[11px] uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined text-lg">layers</span>
+<span>Post-Process</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-primary bg-surface-container-high py-3 px-6 border-l-2 border-primary font-bold font-mono text-[11px] uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span>Team Tips</span>
+</a>
+</li>
+</ul>
+</nav>
+<div class="p-6">
+<button class="w-full bg-primary text-on-primary py-3 font-mono text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-white transition-colors border border-primary">
+      New Entry
+    </button>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-64 pt-24 px-10 pb-12">
+<!-- Header Section -->
+<header class="flex justify-between items-start mb-16">
+<div class="max-w-2xl">
+<h1 class="text-4xl font-black tracking-tight mb-4 font-headline uppercase">Precision Lighting &amp; Team Optimization</h1>
+<p class="text-on-surface-variant font-body text-sm leading-relaxed max-w-xl">Deep-dive technical documentation for real-time engine lighting parameters. Industrial-grade benchmarks and architectural advice for core rendering systems.</p>
+</div>
+<div class="flex items-center gap-4 bg-surface-container-lowest border border-outline-variant p-3">
+<div class="text-right">
+<p class="mono-label text-outline mb-0.5">Active Environment</p>
+<p class="font-mono text-sm text-primary">CORE_RENDER_PRO_8</p>
+</div>
+<div class="w-10 h-10 border border-outline-variant flex items-center justify-center bg-surface-container">
+<span class="material-symbols-outlined text-primary text-xl">terminal</span>
+</div>
+</div>
+</header>
+<!-- Content Grid -->
+<div class="grid grid-cols-12 gap-10">
+<!-- Main Article: Volumetric Lighting -->
+<section class="col-span-12 lg:col-span-8 flex flex-col gap-8">
+<div class="bg-surface-container border border-outline-variant">
+<div class="h-64 relative border-b border-outline-variant">
+<img class="w-full h-full object-cover grayscale opacity-40 hover:grayscale-0 transition-all duration-1000" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5wTnd4rNLU6dwkOCQgMqP9VsTPWDD-FnC9grPWidtxa1Qsu8ASFDfyB833n8YS6s3M12jio0BCKQEw9M6r8LLBQATWcbMhGA7dRwLVB8f7kj6M1n-eP89bKSUU_SI58B_fmS3hPfNXlAQK-QX8fwBIpUQOEWMH8iXr2mrEmmGD6wbSF_EMFxl_NkgKJm6yKBNwb9qVaUi1O_UbQgVY9vZwyvtdDFZg-a3PuV-BTJ7xlLWmegP-QABC5YXQ5k_leiqSCAuCbJhBMY"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container to-transparent"></div>
+<div class="absolute bottom-8 left-8 flex items-baseline gap-4">
+<span class="bg-surface-container-lowest text-primary border border-outline px-2 py-0.5 text-[9px] font-mono tracking-widest">L_FX_MODULE</span>
+<h2 class="text-3xl font-black font-headline uppercase tracking-tight">Volumetric Lighting</h2>
+</div>
+</div>
+<div class="p-8">
+<p class="text-on-surface-variant leading-relaxed mb-8 text-sm">Simulation of light particles through mediums like fog or steam. Mandatory for atmosphere-driven environments and physical light source presence in 3D space.</p>
+<div class="flex flex-wrap gap-4 mb-10">
+<div class="bg-surface-container-lowest border border-outline-variant/50 p-4 min-w-[140px]">
+<p class="mono-label text-outline mb-2">GPU_LOAD</p>
+<p class="font-mono text-sm text-primary">CRITICAL_HIGH</p>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/50 p-4 min-w-[140px]">
+<p class="mono-label text-outline mb-2">PRECISION</p>
+<p class="font-mono text-sm text-primary">256_LN_SMP</p>
+</div>
+<button class="flex items-center gap-3 px-6 bg-surface-container-high border border-outline hover:bg-surface-container-highest text-primary font-mono text-[10px] font-bold uppercase tracking-widest transition-all">
+<span class="material-symbols-outlined text-sm">add_box</span>
+              INJECT_TO_PROMPT
+            </button>
+</div>
+<!-- Team Tip Card: Redesigned for Obsidian -->
+<div class="bg-surface-container-lowest border-l-4 border-primary p-6">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">tips_and_updates</span>
+<h3 class="mono-label text-primary font-bold">TEAM_ADVISORY // GLOBAL_OPTIMIZATION</h3>
+</div>
+<p class="text-sm font-mono text-on-surface-variant leading-relaxed italic">
+              "System warning: Avoid global volumetric fog in closed sectors. Implement localized 'God Ray' proxy meshes with temporal jitter noise for 40% performance gain. Clamp ray intensity via 'on_camera_dist' to mitigate sub-pixel aliasing."
+            </p>
+</div>
+</div>
+</div>
+</section>
+<!-- Sidebar: Stats & Utilities -->
+<aside class="col-span-12 lg:col-span-4 flex flex-col gap-8">
+<div class="bg-surface border border-outline-variant p-6">
+<h3 class="mono-label text-primary font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">analytics</span> 
+          CARBON_SYNTAX_METRICS
+        </h3>
+<div class="space-y-1">
+<div class="flex justify-between items-center py-3 border-b border-outline-variant/20">
+<span class="mono-label text-outline">TOTAL_ENTRIES</span>
+<span class="text-xs font-mono text-primary font-bold">1,248</span>
+</div>
+<div class="flex justify-between items-center py-3 border-b border-outline-variant/20">
+<span class="mono-label text-outline">LATEST_REV</span>
+<span class="text-xs font-mono text-primary">2024.05.21</span>
+</div>
+<div class="flex justify-between items-center py-3">
+<span class="mono-label text-outline">AUTHORS</span>
+<div class="flex -space-x-1">
+<div class="w-6 h-6 border border-surface bg-primary text-on-primary flex items-center justify-center text-[9px] font-bold">JD</div>
+<div class="w-6 h-6 border border-surface bg-surface-container-highest text-primary flex items-center justify-center text-[9px] font-bold">AL</div>
+<div class="w-6 h-6 border border-surface bg-outline text-surface flex items-center justify-center text-[9px] font-bold">KT</div>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-highest border border-outline p-8 relative overflow-hidden">
+<div class="relative z-10">
+<span class="material-symbols-outlined text-primary text-3xl mb-4">auto_awesome</span>
+<h3 class="font-headline font-black text-xl uppercase mb-3">Engine Auto-Docs</h3>
+<p class="text-[11px] text-on-surface-variant leading-relaxed mb-6 font-mono uppercase tracking-tighter">Synchronize real-time engine documentation API buffers.</p>
+<button class="w-full bg-on-surface text-surface py-2 font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-primary transition-colors">START_SYNC_PROTOCOL</button>
+</div>
+<span class="material-symbols-outlined text-8xl absolute -right-4 -bottom-4 opacity-5 pointer-events-none">database</span>
+</div>
+</aside>
+<!-- Row 2: Secondary Terms -->
+<section class="col-span-12 lg:col-span-6">
+<div class="bg-surface border border-outline-variant p-8 hover:border-primary transition-colors h-full flex flex-col">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="mono-label text-outline block mb-1">ID: RT_CORE_002</span>
+<h2 class="text-2xl font-black font-headline uppercase">Ray Tracing</h2>
+</div>
+<div class="flex gap-1.5">
+<span class="w-1.5 h-1.5 bg-primary"></span>
+<span class="w-1.5 h-1.5 bg-outline"></span>
+</div>
+</div>
+<p class="text-on-surface-variant text-xs mb-8 font-body leading-relaxed flex-1">Tracing light paths from observer to scene objects for physically accurate reflection, refraction, and soft-shadow behavior.</p>
+<div class="bg-surface-container-lowest p-5 border border-outline-variant/30 mb-8">
+<h4 class="mono-label text-primary font-bold mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">groups</span> TEAM_LOG
+          </h4>
+<p class="text-[11px] font-mono text-on-surface-variant leading-relaxed">Limit bounce depth to 2. Bounce depth &gt; 3 causes significant frame-time latency in real-time viewports. Roughness floor: 0.15.</p>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex gap-2">
+<span class="bg-surface-container text-outline px-2 py-0.5 border border-outline-variant text-[9px] font-mono">RT_MODULE</span>
+<span class="bg-surface-container text-outline px-2 py-0.5 border border-outline-variant text-[9px] font-mono">HW_ACCEL</span>
+</div>
+<button class="text-primary hover:underline font-mono text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+            APPEND_ENTRY <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<section class="col-span-12 lg:col-span-6">
+<div class="bg-surface border border-outline-variant p-8 hover:border-primary transition-colors h-full flex flex-col">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="mono-label text-outline block mb-1">ID: PBR_MAT_041</span>
+<h2 class="text-2xl font-black font-headline uppercase">PBR Texturing</h2>
+</div>
+<div class="flex gap-1.5">
+<span class="w-1.5 h-1.5 bg-outline"></span>
+<span class="w-1.5 h-1.5 bg-primary"></span>
+</div>
+</div>
+<p class="text-on-surface-variant text-xs mb-8 font-body leading-relaxed flex-1">Physics-based shading model ensuring light conservation and realistic interaction with surface roughness and metallic properties.</p>
+<div class="bg-surface-container-lowest p-5 border border-outline-variant/30 mb-8">
+<h4 class="mono-label text-primary font-bold mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">groups</span> TEAM_LOG
+          </h4>
+<p class="text-[11px] font-mono text-on-surface-variant leading-relaxed">Cross-reference Albedo values. Pure black/white indices are prohibited. Valid range: 30-240 sRGB for HDR stability.</p>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex gap-2">
+<span class="bg-surface-container text-outline px-2 py-0.5 border border-outline-variant text-[9px] font-mono">MAT_STD</span>
+<span class="bg-surface-container text-outline px-2 py-0.5 border border-outline-variant text-[9px] font-mono">ENERGY_CONS</span>
+</div>
+<button class="text-primary hover:underline font-mono text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+            APPEND_ENTRY <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Revision Log -->
+<section class="col-span-12">
+<div class="bg-surface border border-outline-variant p-6">
+<div class="flex items-center justify-between mb-6">
+<h3 class="mono-label text-primary font-black">TEAM_EDIT_STREAM // DIFF_LOG</h3>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-[9px] font-mono text-primary font-bold">STATUS_OK: LIVE_SYNC</span>
+</div>
+</div>
+<div class="font-mono text-[11px] space-y-px">
+<div class="bg-surface-container-low p-3 flex items-center gap-6 border border-outline-variant/20 mb-1">
+<span class="text-primary font-bold">[ADD]</span>
+<span class="text-outline">2024.05.21 14:22:01</span>
+<span class="text-on-surface font-bold">@alec_render</span>
+<span class="text-on-surface-variant italic">Injecting Subsurface Scattering advisory for organic tissue maps.</span>
+</div>
+<div class="bg-surface-container-low p-3 flex items-center gap-6 border border-outline-variant/20 mb-1 opacity-60">
+<span class="text-outline font-bold">[DEL]</span>
+<span class="text-outline">2024.05.21 12:45:12</span>
+<span class="text-on-surface">@systems_bot</span>
+<span class="text-on-surface-variant italic">Legacy Shadow Maps advice removed. Virtual Shadow Maps (VSM) enforced.</span>
+</div>
+<div class="bg-surface-container-low p-3 flex items-center gap-6 border border-outline-variant/20">
+<span class="text-primary font-bold">[MOD]</span>
+<span class="text-outline">2024.05.21 09:15:44</span>
+<span class="text-on-surface font-bold">@kt_lead_art</span>
+<span class="text-on-surface-variant italic">Refined Ambient Occlusion thresholds for mobile target hardware.</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Bottom Bar for Mobile -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-outline-variant px-6 py-4 flex justify-around items-center z-50">
+<button class="text-primary flex flex-col items-center gap-1">
+<span class="material-symbols-outlined">category</span>
+<span class="text-[9px] font-mono">GEN</span>
+</button>
+<button class="text-on-surface-variant flex flex-col items-center gap-1">
+<span class="material-symbols-outlined">light_mode</span>
+<span class="text-[9px] font-mono">LIGHT</span>
+</button>
+<button class="text-on-surface-variant flex flex-col items-center gap-1">
+<span class="material-symbols-outlined">memory</span>
+<span class="text-[9px] font-mono">REND</span>
+</button>
+<button class="text-primary flex flex-col items-center gap-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="text-[9px] font-mono">TIPS</span>
+</button>
+</nav>
+</body></html>
+
+<!-- Favorite Prompts (Graphite Mobile) -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#1A1C1E",
+                        "surface-container": "#212427",
+                        "surface-container-high": "#2A2D31",
+                        "surface-container-low": "#1D2023",
+                        "primary": "#E2E2E6",
+                        "secondary": "#C4C7C5",
+                        "outline": "#444746",
+                        "outline-variant": "#34373A",
+                        "on-surface": "#E2E2E6",
+                        "on-surface-variant": "#C4C7C5",
+                        "accent": "#00E5FF",
+                        "border": "#2D3034"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "4px",
+                        "lg": "4px",
+                        "xl": "4px",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #1A1C1E;
+            color: #E2E2E6;
+            font-family: 'Inter', sans-serif;
+        }
+        .industrial-border {
+            border: 1px solid #2D3034;
+        }
+        .graphite-gradient {
+            background: linear-gradient(180deg, #212427 0%, #1A1C1E 100%);
+        }
+    </style>
+<style>
+        body {
+          min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="bg-[#1A1C1E] border-b border-border flex justify-between items-center w-full px-6 h-16 sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<div class="flex items-center justify-center w-8 h-8 rounded bg-surface-container-high industrial-border">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="terminal">terminal</span>
+</div>
+<h1 class="text-sm font-bold text-primary tracking-widest uppercase font-mono">Terminal Architect</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-full border border-outline overflow-hidden grayscale">
+<img alt="User profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnWxydW4qR4WPunNqD6RJhUTTAv60PCVdRqPc05dPM273z5OEBHTXCuus7taee45tfxBlfXgnorpxmofovWXFjHd4glGNQBRtQTYmgAbFz2R8IXKELEgHlfbDX3ynoedkZfS2bPPkDgcLTHHcU0qXEKWfZURT8ff6fNBrmkMH84UuGRUhNlBbsYq9kvaabK0yVrVEriqc_0hMYmWXHj3FUZy0snNquF62uyDxhGQidPWSbNQ9pI-RGYtLuLLE1Pm64pBrNpFc-3kc"/>
+</div>
+</div>
+</header>
+<main class="max-w-5xl mx-auto px-6 py-8">
+<!-- Hero Section -->
+<div class="mb-10">
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<div class="w-1.5 h-1.5 bg-accent"></div>
+<span class="font-mono text-[10px] uppercase tracking-[0.4em] text-secondary">Registry / Prompts</span>
+</div>
+<div class="flex flex-col md:flex-row md:items-baseline justify-between gap-4 mt-2">
+<h2 class="text-3xl font-bold tracking-tight text-on-surface">Favorite Prompts</h2>
+<div class="flex items-center gap-4 font-mono text-[10px] text-on-surface-variant">
+<span class="flex items-center gap-1.5"><span class="w-1 h-1 bg-outline rounded-full"></span>COUNT: 08</span>
+<span class="flex items-center gap-1.5"><span class="w-1 h-1 bg-accent rounded-full animate-pulse"></span>STATUS: ACTIVE</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Search Bar -->
+<div class="mb-12">
+<div class="relative">
+<div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline text-lg" data-icon="search">search</span>
+</div>
+<input class="w-full bg-surface-container industrial-border focus:ring-1 focus:ring-accent/30 rounded py-3 pl-12 pr-4 font-mono text-xs text-on-surface placeholder:text-outline transition-all uppercase tracking-wider" placeholder="SYSTEM_QUERY..." type="text"/>
+</div>
+</div>
+<!-- Grid for Prompts -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Card 1 -->
+<div class="group relative flex flex-col p-5 rounded industrial-border bg-surface-container-low hover:bg-surface-container-high transition-all duration-200">
+<div class="flex justify-between items-start mb-4">
+<div class="flex gap-2">
+<span class="px-2 py-0.5 border border-outline rounded-sm text-secondary text-[9px] font-mono font-medium uppercase tracking-widest">Logic</span>
+<span class="px-2 py-0.5 border border-border bg-surface-container rounded-sm text-accent text-[9px] font-mono font-medium tracking-widest">v2.4</span>
+</div>
+<button class="p-1 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-base" data-icon="edit">edit</span>
+</button>
+</div>
+<h3 class="text-base font-bold mb-2 text-on-surface group-hover:text-accent transition-colors">Neural Architect Core</h3>
+<p class="text-on-surface-variant text-xs leading-relaxed line-clamp-3 mb-6 font-normal font-mono opacity-80">
+                    Initialize a system-level directive for high-dimensional data processing. Focus on architectural integrity and non-linear scaling...
+                </p>
+<div class="mt-auto flex items-center justify-between border-t border-border pt-4">
+<div class="flex items-center gap-2 font-mono text-[9px] text-outline">
+<span class="material-symbols-outlined text-xs" data-icon="calendar_today">calendar_today</span>
+<span>OCT 24, 2023</span>
+</div>
+<span class="text-[9px] font-mono text-outline uppercase tracking-tighter">REF: PR-001</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="group relative flex flex-col p-5 rounded industrial-border bg-surface-container-low hover:bg-surface-container-high transition-all duration-200">
+<div class="flex justify-between items-start mb-4">
+<div class="flex gap-2">
+<span class="px-2 py-0.5 border border-outline rounded-sm text-secondary text-[9px] font-mono font-medium uppercase tracking-widest">Debug</span>
+</div>
+<button class="p-1 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-base" data-icon="edit">edit</span>
+</button>
+</div>
+<h3 class="text-base font-bold mb-2 text-on-surface group-hover:text-accent transition-colors">Trace Logger Refactor</h3>
+<p class="text-on-surface-variant text-xs leading-relaxed line-clamp-3 mb-6 font-normal font-mono opacity-80">
+                    Analyze the following kernel stack trace. Identify memory leaks in the primary buffer allocation and suggest a lock-free synchronization...
+                </p>
+<div class="mt-auto flex items-center justify-between border-t border-border pt-4">
+<div class="flex items-center gap-2 font-mono text-[9px] text-outline">
+<span class="material-symbols-outlined text-xs" data-icon="calendar_today">calendar_today</span>
+<span>NOV 12, 2023</span>
+</div>
+<span class="text-[9px] font-mono text-outline uppercase tracking-tighter">REF: PR-042</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="group relative flex flex-col p-5 rounded industrial-border bg-surface-container-low hover:bg-surface-container-high transition-all duration-200">
+<div class="flex justify-between items-start mb-4">
+<div class="flex gap-2">
+<span class="px-2 py-0.5 border border-outline rounded-sm text-secondary text-[9px] font-mono font-medium uppercase tracking-widest">Creative</span>
+<span class="px-2 py-0.5 border border-border bg-surface-container rounded-sm text-secondary text-[9px] font-mono font-medium tracking-widest uppercase">Meta</span>
+</div>
+<button class="p-1 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-base" data-icon="edit">edit</span>
+</button>
+</div>
+<h3 class="text-base font-bold mb-2 text-on-surface group-hover:text-accent transition-colors">Cybernetic Prose Gen</h3>
+<p class="text-on-surface-variant text-xs leading-relaxed line-clamp-3 mb-6 font-normal font-mono opacity-80">
+                    Compose a narrative sequence set in a neon-drenched megastructure. The tone should be detached, technical, yet evocative...
+                </p>
+<div class="mt-auto flex items-center justify-between border-t border-border pt-4">
+<div class="flex items-center gap-2 font-mono text-[9px] text-outline">
+<span class="material-symbols-outlined text-xs" data-icon="calendar_today">calendar_today</span>
+<span>DEC 01, 2023</span>
+</div>
+<span class="text-[9px] font-mono text-outline uppercase tracking-tighter">REF: PR-109</span>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="group relative flex flex-col p-5 rounded industrial-border bg-surface-container-low hover:bg-surface-container-high transition-all duration-200">
+<div class="flex justify-between items-start mb-4">
+<div class="flex gap-2">
+<span class="px-2 py-0.5 border border-outline rounded-sm text-secondary text-[9px] font-mono font-medium uppercase tracking-widest">SQL</span>
+</div>
+<button class="p-1 text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-base" data-icon="edit">edit</span>
+</button>
+</div>
+<h3 class="text-base font-bold mb-2 text-on-surface group-hover:text-accent transition-colors">Query Optimizer V4</h3>
+<p class="text-on-surface-variant text-xs leading-relaxed line-clamp-3 mb-6 font-normal font-mono opacity-80">
+                    Given a complex relational schema, generate an optimized PostgreSQL query that aggregates user engagement metrics...
+                </p>
+<div class="mt-auto flex items-center justify-between border-t border-border pt-4">
+<div class="flex items-center gap-2 font-mono text-[9px] text-outline">
+<span class="material-symbols-outlined text-xs" data-icon="calendar_today">calendar_today</span>
+<span>JAN 05, 2024</span>
+</div>
+<span class="text-[9px] font-mono text-outline uppercase tracking-tighter">REF: PR-221</span>
+</div>
+</div>
+</div>
+</main>
+<!-- FAB -->
+<button class="fixed bottom-24 right-8 w-12 h-12 bg-primary text-surface rounded shadow-xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95 z-40">
+<span class="material-symbols-outlined font-bold" data-icon="add">add</span>
+</button>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center pt-2 pb-6 px-4 bg-surface border-t border-border shadow-2xl">
+<div class="flex flex-col items-center justify-center text-outline hover:text-primary transition-colors cursor-pointer group">
+<span class="material-symbols-outlined mb-1 group-hover:text-accent" data-icon="code_blocks">code_blocks</span>
+<span class="font-mono text-[8px] uppercase tracking-widest">Convert</span>
+</div>
+<div class="flex flex-col items-center justify-center text-accent cursor-pointer group">
+<span class="material-symbols-outlined mb-1" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-mono text-[8px] uppercase tracking-widest">Favorites</span>
+</div>
+<div class="flex flex-col items-center justify-center text-outline hover:text-primary transition-colors cursor-pointer group">
+<span class="material-symbols-outlined mb-1 group-hover:text-accent" data-icon="database">database</span>
+<span class="font-mono text-[8px] uppercase tracking-widest">History</span>
+</div>
+<div class="flex flex-col items-center justify-center text-outline hover:text-primary transition-colors cursor-pointer group">
+<span class="material-symbols-outlined mb-1 group-hover:text-accent" data-icon="settings">settings</span>
+<span class="font-mono text-[8px] uppercase tracking-widest">Settings</span>
+</div>
+</nav>
+</body></html>
+
+<!-- Prompt Converter (Graphite Mobile) -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Terminal Architect - Obsidian Core</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#909090",
+                        "on-tertiary-fixed-variant": "#303030",
+                        "error-container": "#481010",
+                        "primary-container": "#2A2C2E",
+                        "surface-variant": "#1E2022",
+                        "primary": "#E0E0E0",
+                        "outline-variant": "#3A3C3E",
+                        "secondary-container": "#252729",
+                        "outline": "#707070",
+                        "inverse-surface": "#E0E0E0",
+                        "surface-container-highest": "#2D2F31",
+                        "on-primary-fixed-variant": "#A0A0A0",
+                        "surface-dim": "#0F1113",
+                        "on-primary": "#0A0A0A",
+                        "on-error": "#FFDAD6",
+                        "on-surface": "#E0E0E0",
+                        "background": "#0A0B0C",
+                        "on-tertiary": "#0A0A0A",
+                        "surface-container": "#16181A",
+                        "on-tertiary-container": "#E0E0E0",
+                        "on-primary-container": "#FFFFFF",
+                        "error": "#FFB4AB",
+                        "on-background": "#E0E0E0",
+                        "primary-fixed": "#F0F0F0",
+                        "on-secondary-fixed": "#0A0A0A",
+                        "surface-bright": "#222426",
+                        "secondary-fixed": "#D0D0D0",
+                        "on-secondary-container": "#C0C0C0",
+                        "surface": "#0A0B0C",
+                        "surface-container-lowest": "#050607",
+                        "tertiary": "#A0A0A0",
+                        "on-primary-fixed": "#000000",
+                        "secondary-fixed-dim": "#B0B0B0",
+                        "tertiary-fixed-dim": "#909090",
+                        "tertiary-fixed": "#B0B0B0",
+                        "surface-container-low": "#111315",
+                        "on-surface-variant": "#A0A2A4",
+                        "primary-fixed-dim": "#D0D0D0",
+                        "on-error-container": "#FFDAD6",
+                        "on-secondary-fixed-variant": "#404040",
+                        "on-tertiary-fixed": "#000000",
+                        "surface-container-high": "#1C1E20",
+                        "on-secondary": "#0A0A0A",
+                        "tertiary-container": "#2A2C2E",
+                        "inverse-primary": "#1A1C1E",
+                        "inverse-on-surface": "#101214",
+                        "secondary": "#B0B0B0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0px",
+                        "lg": "4px",
+                        "xl": "4px",
+                        "full": "0px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .industrial-border {
+            border: 1px solid #3A3C3E;
+        }
+        .code-shadow {
+            box-shadow: 0 4px 20px -5px rgba(0,0,0,0.5);
+        }
+        body {
+            min-height: 100dvh;
+            letter-spacing: -0.01em;
+        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0A0B0C; }
+        ::-webkit-scrollbar-thumb { background: #3A3C3E; border-radius: 0px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body min-h-screen selection:bg-primary/20 pb-20">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-14 bg-background border-b border-outline-variant/30">
+<div class="flex items-center gap-3">
+<button class="text-on-surface-variant hover:text-primary transition-colors duration-150">
+<span class="material-symbols-outlined text-[20px]">terminal</span>
+</button>
+<h1 class="font-['JetBrains_Mono'] text-primary tracking-[0.1em] font-bold text-xs">ARCHITECT.02</h1>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 bg-surface-container border border-outline-variant/50 flex items-center justify-center overflow-hidden grayscale contrast-125">
+<img alt="User Profile Avatar" class="w-full h-full object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWhTRVpb_jJnKadgI9FKCU9pBfq-0Pdmq0X_oU0gsYJrf0hHz_X4rfvEWghs7HkNyyPv__b-5J860yEkCkMAQUsVKTS0nIvMmFE6WPyVX6EowfV872Z_jadiI1ayJI9LmAf9ceBDLTI0nAq2f_dkLR4c8-KrjerIHAyG2JazKZd8etq-Y3CyFZspIdlDwqRdr0jD1Nn5CR_xvsjyo7QR-sfjcZ8cT1RzMrXxY9MfEZGqGcvW-PZXhZd5OnypuEZL0hxIis2vtxOiE"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-14 pb-12 min-h-screen">
+<div class="max-w-6xl mx-auto px-4 grid grid-cols-1 gap-6 items-start mt-4">
+<!-- Unified Converter & Translator Section -->
+<section class="space-y-4">
+<!-- Configuration Header -->
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 group cursor-pointer">
+<span class="font-['JetBrains_Mono'] text-[10px] text-on-surface-variant uppercase tracking-widest">Detect</span>
+<span class="material-symbols-outlined text-[14px] text-outline">expand_more</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-outline/40">arrow_forward</span>
+<div class="flex items-center gap-2 group cursor-pointer">
+<span class="font-['JetBrains_Mono'] text-[10px] text-primary uppercase tracking-widest font-bold">JSON v1.0</span>
+<span class="material-symbols-outlined text-[14px] text-primary">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="relative group">
+<div class="absolute -top-2 left-4 px-2 bg-background z-10">
+<label class="font-['JetBrains_Mono'] text-[9px] text-on-surface-variant uppercase tracking-[0.25em]">Input Source</label>
+</div>
+<div class="industrial-border bg-surface-container-low p-1">
+<textarea class="w-full h-64 bg-transparent border-none p-4 font-['JetBrains_Mono'] text-sm text-on-surface placeholder:text-outline/30 focus:ring-0 resize-none" placeholder="Enter prompt or architectural description..."></textarea>
+</div>
+<div class="absolute bottom-3 right-4 flex items-center gap-2">
+<span class="font-['JetBrains_Mono'] text-[9px] text-outline/40 uppercase tracking-tighter">Encoding: UTF-8</span>
+<div class="w-1.5 h-1.5 rounded-full bg-green-500/40 animate-pulse"></div>
+</div>
+</div>
+<!-- Action Bar (Integrated Translator Look) -->
+<div class="grid grid-cols-2 gap-2">
+<button class="industrial-border bg-surface-container hover:bg-surface-container-high text-on-surface-variant py-3.5 flex items-center justify-center gap-2 transition-all active:bg-surface-variant">
+<span class="material-symbols-outlined text-[18px]">translate</span>
+<span class="font-['JetBrains_Mono'] text-[11px] uppercase font-bold tracking-widest">Translate</span>
+</button>
+<button class="bg-primary text-on-primary py-3.5 flex items-center justify-center gap-2 active:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">bolt</span>
+<span class="font-['JetBrains_Mono'] text-[11px] uppercase font-bold tracking-widest">Construct</span>
+</button>
+</div>
+</section>
+<!-- Output Section -->
+<section class="space-y-4">
+<div class="flex justify-between items-end px-1">
+<label class="font-['JetBrains_Mono'] text-[9px] text-on-surface-variant uppercase tracking-[0.25em]">Parsed Output</label>
+<div class="flex gap-4">
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+</button>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+</div>
+</div>
+<!-- Industrial Code Frame -->
+<div class="industrial-border bg-surface-container-lowest overflow-hidden code-shadow">
+<div class="bg-surface-container-high border-b border-outline-variant/30 px-3 py-1.5 flex justify-between items-center">
+<div class="flex gap-1">
+<div class="w-1 h-1 bg-outline/40"></div>
+<div class="w-1 h-1 bg-outline/40"></div>
+<div class="w-1 h-1 bg-outline/40"></div>
+</div>
+<span class="font-['JetBrains_Mono'] text-[8px] text-outline uppercase tracking-[0.2em]">output.json</span>
+</div>
+<div class="p-5 font-['JetBrains_Mono'] text-[13px] leading-relaxed overflow-x-auto h-72">
+<pre><span class="text-outline">{</span>
+  <span class="text-on-surface-variant">"status"</span>: <span class="text-primary">"success"</span>,
+  <span class="text-on-surface-variant">"schema"</span>: <span class="text-outline">[</span>
+    <span class="text-outline">{</span>
+      <span class="text-on-surface-variant">"id"</span>: <span class="text-primary">1024</span>,
+      <span class="text-on-surface-variant">"type"</span>: <span class="text-primary">"architect"</span>,
+      <span class="text-on-surface-variant">"active"</span>: <span class="text-primary">true</span>
+    <span class="text-outline">}</span>
+  <span class="text-outline">]</span>
+<span class="text-outline">}</span></pre>
+</div>
+</div>
+<!-- Stats Bento -->
+<div class="grid grid-cols-2 gap-2">
+<div class="industrial-border bg-surface-container-low p-3">
+<span class="font-['JetBrains_Mono'] text-[8px] text-outline uppercase tracking-widest">Latency</span>
+<div class="text-lg font-['JetBrains_Mono'] font-bold text-primary mt-1">24ms</div>
+</div>
+<div class="industrial-border bg-surface-container-low p-3">
+<span class="font-['JetBrains_Mono'] text-[8px] text-outline uppercase tracking-widest">Load</span>
+<div class="text-lg font-['JetBrains_Mono'] font-bold text-primary mt-1">1.2k</div>
+</div>
+</div>
+</section>
+<!-- Recent Activity -->
+<section class="space-y-3 pb-8">
+<div class="flex items-center justify-between border-b border-outline-variant/30 pb-2">
+<h3 class="font-['JetBrains_Mono'] text-[10px] text-on-surface uppercase tracking-[0.2em] font-bold">Registry History</h3>
+<button class="text-outline text-[9px] font-['JetBrains_Mono'] uppercase tracking-widest hover:text-primary">Export All</button>
+</div>
+<div class="space-y-px">
+<!-- History Item 1 -->
+<div class="group bg-surface-container-low p-4 flex items-center justify-between border-b border-outline-variant/10 hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">inventory_2</span>
+<div class="flex flex-col">
+<span class="text-[11px] font-bold tracking-tight">User.v2.Schema</span>
+<span class="font-['JetBrains_Mono'] text-[8px] text-outline uppercase">02m ago</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[16px] text-outline/30">chevron_right</span>
+</div>
+<!-- History Item 2 -->
+<div class="group bg-surface-container-low p-4 flex items-center justify-between border-b border-outline-variant/10 hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">hub</span>
+<div class="flex flex-col">
+<span class="text-[11px] font-bold tracking-tight">API.Endpoint.Map</span>
+<span class="font-['JetBrains_Mono'] text-[8px] text-outline uppercase">15m ago</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[16px] text-outline/30">chevron_right</span>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center h-16 bg-background border-t border-outline-variant/30 md:hidden">
+<button class="flex flex-col items-center justify-center gap-1 w-1/4 h-full border-t-2 border-primary bg-surface-container-highest/10">
+<span class="material-symbols-outlined text-primary text-[22px]">view_in_ar</span>
+<span class="font-['JetBrains_Mono'] text-[8px] uppercase font-bold text-primary tracking-tighter">Construct</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 w-1/4 h-full text-outline hover:text-on-surface">
+<span class="material-symbols-outlined text-[22px]">history</span>
+<span class="font-['JetBrains_Mono'] text-[8px] uppercase tracking-tighter">History</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 w-1/4 h-full text-outline hover:text-on-surface">
+<span class="material-symbols-outlined text-[22px]">database</span>
+<span class="font-['JetBrains_Mono'] text-[8px] uppercase tracking-tighter">Repo</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 w-1/4 h-full text-outline hover:text-on-surface">
+<span class="material-symbols-outlined text-[22px]">settings_input_component</span>
+<span class="font-['JetBrains_Mono'] text-[8px] uppercase tracking-tighter">System</span>
+</button>
+</nav>
+</body></html>
+
+<!-- Terminal Architect Dashboard (Graphite) -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Terminal Architect - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=JetBrains+Mono:wght@100..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#1a1c1e",
+                        "on-tertiary": "#191c1f",
+                        "on-secondary-fixed": "#1a1c1f",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#e2e2e2",
+                        "primary-fixed-dim": "#454747",
+                        "primary": "#ffffff",
+                        "on-primary": "#1a1c1c",
+                        "on-primary-fixed": "#ffffff",
+                        "surface": "#121416",
+                        "surface-bright": "#37393b",
+                        "error-container": "#93000a",
+                        "inverse-primary": "#5d5f5f",
+                        "surface-variant": "#333537",
+                        "on-primary-container": "#000000",
+                        "secondary-fixed": "#c6c6ca",
+                        "error": "#ffb4ab",
+                        "background": "#121416",
+                        "surface-container": "#1e2022",
+                        "secondary": "#c6c6ca",
+                        "surface-container-lowest": "#0c0e10",
+                        "on-surface-variant": "#c6c6c6",
+                        "on-tertiary-fixed": "#ffffff",
+                        "on-secondary": "#1a1c1f",
+                        "surface-container-high": "#282a2c",
+                        "inverse-surface": "#e2e2e5",
+                        "tertiary-fixed-dim": "#44474b",
+                        "tertiary-container": "#8e9195",
+                        "secondary-fixed-dim": "#aaabaf",
+                        "on-secondary-container": "#e2e2e6",
+                        "tertiary-fixed": "#5c5f63",
+                        "on-error": "#690005",
+                        "on-background": "#e2e2e5",
+                        "on-surface": "#e2e2e5",
+                        "outline": "#919191",
+                        "surface-dim": "#121416",
+                        "surface-container-highest": "#333537",
+                        "outline-variant": "#474747",
+                        "primary-container": "#d4d4d4",
+                        "surface-tint": "#c6c6c6",
+                        "on-secondary-fixed-variant": "#3a3b3f",
+                        "inverse-on-surface": "#2f3133",
+                        "primary-fixed": "#5d5f5f",
+                        "secondary-container": "#45474a",
+                        "on-tertiary-fixed-variant": "#e1e2e7",
+                        "tertiary": "#e1e2e7",
+                        "on-tertiary-container": "#000000"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121416;
+            color: #e2e2e5;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .glass-panel {
+            background: rgba(55, 57, 59, 0.6);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-screen w-64 z-50 bg-[#1A1C1E] flex flex-col py-8 px-4 gap-y-6 font-['Inter'] text-[13px] font-medium">
+<div class="mb-4">
+<div class="text-xl font-bold tracking-widest text-white uppercase mb-1">ENGINE_CORE</div>
+<div class="text-[10px] text-on-surface-variant tracking-[0.2em] uppercase">v2.4.0 Precision</div>
+</div>
+<button class="bg-primary text-on-primary py-3 px-4 rounded-md font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all duration-200">
+<span class="material-symbols-outlined text-sm">add_box</span>
+            New Workspace
+        </button>
+<nav class="flex flex-col gap-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-white bg-[#1E2022] font-semibold rounded transition-all duration-150 translate-x-1" href="#">
+<span class="material-symbols-outlined">terminal</span>
+                Prompt Converter
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#C6C6CA] hover:bg-[#1E2022] hover:text-white transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+                3D Glossary
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#C6C6CA] hover:bg-[#1E2022] hover:text-white transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">view_in_ar</span>
+                Asset Library
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#C6C6CA] hover:bg-[#1E2022] hover:text-white transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">history</span>
+                Project History
+            </a>
+</nav>
+<div class="mt-auto pt-6 border-t border-white/5">
+<div class="flex items-center gap-3 px-2">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center border border-outline-variant/20">
+<span class="material-symbols-outlined text-sm text-secondary">database</span>
+</div>
+<div>
+<div class="text-white font-bold text-xs uppercase tracking-tighter">System Logo</div>
+<div class="text-[10px] text-on-surface-variant">Cloud Active</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 h-16 z-40 bg-[#121416] border-b border-white/5 flex items-center justify-between px-8 w-[calc(100%-16rem)] ml-64 font-['Inter'] text-sm tracking-tight">
+<div class="flex items-center gap-6">
+<span class="text-lg font-black tracking-tighter text-white uppercase">PROMPT_3D</span>
+<div class="flex items-center bg-surface-container-low px-3 py-1.5 rounded-md border border-outline-variant/10">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-xs w-48 text-on-surface" placeholder="Search architecture..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1">
+<button class="p-2 text-[#C6C6CA] hover:bg-[#1E2022] transition-all duration-200 rounded">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-[#C6C6CA] hover:bg-[#1E2022] transition-all duration-200 rounded">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+<div class="h-8 w-px bg-white/10 mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<div class="text-white font-bold text-[11px] leading-none uppercase">Admin_Node</div>
+<div class="text-on-surface-variant text-[9px] uppercase tracking-wider">Premium Access</div>
+</div>
+<img alt="User avatar" class="w-8 h-8 rounded-md object-cover grayscale brightness-110" data-alt="Close up portrait of a man with minimalist glasses and neutral expression in soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwsxLo56eXUhfQ_pZWUdpxM4MEmT0uXc3KKr44PpxFVlrL5SOT6WBQ0DzE8dtgV-yKcrJ2qqrH6QPBYPVYwAFEi5n0CHe54WYXe4K3whi3O7egye_0sKhmEQTBmgp8kr5Ll1oEykA0jQ69p6p4c_WXZG0R5JcnmNbay9FLL5fvKwgnH-jq6cY5a6HuTGH1V6w_vC-OwTehvnv6I5oUEe5rLg4n0YLNMhDp865o7sIFn3CH0hpwh7tWHYJ_8wb_NkT2_KB4ufkU7VY"/>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="ml-64 pt-24 px-8 pb-12 min-h-screen">
+<!-- Data Ribbon -->
+<div class="w-full bg-surface-container-highest flex items-center justify-between px-6 py-3 mb-8 rounded-lg shadow-sm border border-outline-variant/5">
+<div class="flex items-center gap-8">
+<div class="flex flex-col">
+<span class="text-[10px] text-on-surface-variant uppercase font-bold tracking-widest">Active Model</span>
+<span class="text-sm font-mono text-white">GPT-4-ARCH-V3</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[10px] text-on-surface-variant uppercase font-bold tracking-widest">Current Token usage</span>
+<span class="text-sm font-mono text-white">4,281 / 128k</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[10px] text-on-surface-variant uppercase font-bold tracking-widest">Avg Latency</span>
+<span class="text-sm font-mono text-white">248ms</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
+<span class="text-[11px] font-bold text-white uppercase tracking-tighter">System Nominal</span>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-8">
+<!-- Prompt Converter Interface -->
+<div class="col-span-12 lg:col-span-9 flex flex-col gap-6">
+<div class="grid grid-cols-2 gap-px bg-outline-variant/20 rounded-xl overflow-hidden border border-outline-variant/20">
+<!-- Left: Natural Language Input -->
+<div class="bg-surface-container p-6 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">subject</span>
+                                Natural Language Prompt
+                            </h3>
+<div class="px-2 py-0.5 rounded bg-surface-container-low border border-outline-variant/30 text-[10px] font-mono text-on-surface-variant">
+                                RAW_TEXT
+                            </div>
+</div>
+<div class="relative h-[450px]">
+<textarea class="w-full h-full bg-surface-container-low border border-outline-variant/10 rounded-lg p-6 text-sm text-on-surface placeholder:text-outline-variant/50 focus:ring-1 focus:ring-primary focus:border-primary resize-none font-medium leading-relaxed" placeholder="Describe your 3D scene architecture here..."></textarea>
+<div class="absolute bottom-4 right-4 flex items-center gap-3">
+<button class="p-2 rounded bg-surface-container text-white hover:bg-surface-bright transition-all">
+<span class="material-symbols-outlined">translate</span>
+</button>
+<button class="p-2 rounded bg-surface-container text-white hover:bg-surface-bright transition-all">
+<span class="material-symbols-outlined">mic</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Right: JSON Schema Output -->
+<div class="bg-surface-container p-6 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">data_object</span>
+                                JSON Output Schema
+                            </h3>
+<button class="text-[11px] font-bold text-white uppercase flex items-center gap-1 hover:underline">
+<span class="material-symbols-outlined text-[14px]">content_copy</span>
+                                Copy Code
+                            </button>
+</div>
+<div class="h-[450px] bg-surface-container-lowest border border-outline-variant/10 rounded-lg p-6 overflow-auto code-font text-[13px]">
+<pre class="text-[#919191] leading-relaxed"><span class="text-[#e2e2e5]">{</span>
+  <span class="text-secondary">"scene_config"</span>: <span class="text-[#e2e2e5]">{</span>
+    <span class="text-secondary">"render_engine"</span>: <span class="text-white">"cycles_core_v4"</span>,
+    <span class="text-secondary">"geometry"</span>: <span class="text-[#e2e2e5]">[</span>
+      <span class="text-[#e2e2e5]">{</span>
+        <span class="text-secondary">"id"</span>: <span class="text-white">"obj_01"</span>,
+        <span class="text-secondary">"type"</span>: <span class="text-white">"parametric_mesh"</span>,
+        <span class="text-secondary">"vertices"</span>: <span class="text-white">12400</span>,
+        <span class="text-secondary">"material"</span>: <span class="text-white">"brushed_graphite"</span>
+      <span class="text-[#e2e2e5]">}</span>
+    <span class="text-[#e2e2e5]">]</span>,
+    <span class="text-secondary">"lighting"</span>: <span class="text-[#e2e2e5]">{</span>
+      <span class="text-secondary">"hdri"</span>: <span class="text-white">"industrial_loft_02"</span>,
+      <span class="text-secondary">"intensity"</span>: <span class="text-white">1.45</span>
+    <span class="text-[#e2e2e5]">}</span>
+  <span class="text-[#e2e2e5]">}</span>
+<span class="text-[#e2e2e5]">}</span></pre>
+</div>
+</div>
+</div>
+<!-- Translator Interface Integration -->
+<div class="bg-surface-container-low border border-outline-variant/10 rounded-xl p-6 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="p-3 bg-surface-container rounded-lg">
+<span class="material-symbols-outlined text-white">language</span>
+</div>
+<div>
+<h4 class="text-sm font-bold text-white uppercase tracking-tight">Contextual Translator</h4>
+<p class="text-xs text-on-surface-variant">Converting Architecture terms to Engine specific syntax</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface-container px-3 py-1.5 rounded-md border border-outline-variant/10">
+<span class="text-[11px] font-bold text-white uppercase mr-3">Source:</span>
+<span class="text-[11px] text-on-surface-variant">Arch-Standard</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">east</span>
+<div class="flex items-center bg-surface-container px-3 py-1.5 rounded-md border border-outline-variant/10">
+<span class="text-[11px] font-bold text-white uppercase mr-3">Target:</span>
+<span class="text-[11px] text-on-surface-variant">UE5-Meta-Lumina</span>
+</div>
+<button class="ml-4 px-6 py-2 bg-primary text-on-primary rounded text-[11px] font-bold uppercase tracking-widest hover:opacity-90">Execute Convert</button>
+</div>
+</div>
+</div>
+<!-- Sidebar: Metrics & History -->
+<div class="col-span-12 lg:col-span-3 flex flex-col gap-6">
+<!-- Metrics Card -->
+<div class="bg-surface-container p-6 rounded-xl border border-outline-variant/10">
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-6 flex items-center justify-between">
+                        Real-time Stats
+                        <span class="material-symbols-outlined text-[16px]">analytics</span>
+</h3>
+<div class="space-y-6">
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="text-[10px] text-on-surface-variant uppercase font-bold">API Load</span>
+<span class="text-sm font-mono text-white">42%</span>
+</div>
+<div class="w-full h-1 bg-surface-container-low rounded-full overflow-hidden">
+<div class="h-full bg-white w-[42%]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="text-[10px] text-on-surface-variant uppercase font-bold">Queue Depth</span>
+<span class="text-sm font-mono text-white">0.02s</span>
+</div>
+<div class="w-full h-1 bg-surface-container-low rounded-full overflow-hidden">
+<div class="h-full bg-white w-[10%]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-end mb-2">
+<span class="text-[10px] text-on-surface-variant uppercase font-bold">Error Rate</span>
+<span class="text-sm font-mono text-white">0.01%</span>
+</div>
+<div class="w-full h-1 bg-surface-container-low rounded-full overflow-hidden">
+<div class="h-full bg-error w-[2%] shadow-[0_0_8px_rgba(255,180,171,0.4)]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Conversions -->
+<div class="bg-surface-container flex-grow rounded-xl border border-outline-variant/10 overflow-hidden flex flex-col">
+<div class="p-6 pb-4 flex items-center justify-between">
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Recent Logs</h3>
+<button class="p-1 hover:bg-surface-container-low rounded transition-all">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+<div class="flex flex-col">
+<!-- Log Item 1 -->
+<div class="px-6 py-4 border-t border-outline-variant/10 hover:bg-surface-container-low transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-1">
+<span class="text-xs font-bold text-white group-hover:text-primary transition-colors">industrial_loft_gen</span>
+<span class="text-[10px] font-mono text-on-surface-variant">2m ago</span>
+</div>
+<div class="text-[11px] text-on-surface-variant truncate">Parametric mesh generation for interior scene...</div>
+</div>
+<!-- Log Item 2 -->
+<div class="px-6 py-4 border-t border-outline-variant/10 hover:bg-surface-container-low transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-1">
+<span class="text-xs font-bold text-white group-hover:text-primary transition-colors">cyberpunk_alley_v2</span>
+<span class="text-[10px] font-mono text-on-surface-variant">14m ago</span>
+</div>
+<div class="text-[11px] text-on-surface-variant truncate">Neon lighting arrays and wet asphalt materials...</div>
+</div>
+<!-- Log Item 3 -->
+<div class="px-6 py-4 border-t border-outline-variant/10 hover:bg-surface-container-low transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-1">
+<span class="text-xs font-bold text-white group-hover:text-primary transition-colors">brutalist_structure</span>
+<span class="text-[10px] font-mono text-on-surface-variant">1h ago</span>
+</div>
+<div class="text-[11px] text-on-surface-variant truncate">Concrete texture mapping with raytrace shadows...</div>
+</div>
+<!-- Log Item 4 -->
+<div class="px-6 py-4 border-t border-outline-variant/10 hover:bg-surface-container-low transition-all cursor-pointer group">
+<div class="flex justify-between items-start mb-1">
+<span class="text-xs font-bold text-white group-hover:text-primary transition-colors">parametric_hull_09</span>
+<span class="text-[10px] font-mono text-on-surface-variant">4h ago</span>
+</div>
+<div class="text-[11px] text-on-surface-variant truncate">Curved surface math and metallic sheen...</div>
+</div>
+</div>
+<button class="mt-auto p-4 text-[10px] font-bold uppercase tracking-widest text-center text-on-surface-variant hover:text-white bg-surface-container-low transition-all">
+                        View All Archives
+                    </button>
+</div>
+</div>
+</div>
+<!-- Featured Asset Preview Section (Bento Grid Style) -->
+<div class="mt-12">
+<h2 class="text-xs font-black uppercase tracking-[0.4em] text-on-surface-variant mb-6 flex items-center gap-4">
+                Architecture Visualizer
+                <div class="h-px flex-grow bg-outline-variant/20"></div>
+</h2>
+<div class="grid grid-cols-4 gap-6">
+<div class="col-span-2 row-span-2 rounded-xl bg-surface-container border border-outline-variant/10 overflow-hidden relative group">
+<img alt="Modern architecture" class="w-full h-full object-cover grayscale opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-500" data-alt="High-angle shot of a sleek glass and steel skyscraper reflecting the dramatic blue hour sky with minimalist lines" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-HYG7Wq5LDcfh9mhqM-4ZylaRqmsz2xeEa6NozZYL1m7WASBIG9TLCovKjYIOa4LA0qIx5r8rZhIhxitewsiaYPoyU3kO8XMnYRKLWrMHekEcNrst7F-QxsDGkqMLOWTnIbjeOobhFjY4HXfaV4IAjEd3gDBTP593080Jfk07fYow5Tx60iI_CJln5F5IeN1f2obWZ80IZrTHssIOLSvuHaM5YntgbDWXU3MUZwb_0ORzwCEuG8UT78kcpoQp33bgdg4EgesBUVk"/>
+<div class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-surface to-transparent">
+<div class="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Active Output</div>
+<h4 class="text-lg font-bold text-white">Metropolitan Facade Engine</h4>
+</div>
+</div>
+<div class="col-span-1 rounded-xl bg-surface-container border border-outline-variant/10 p-6 flex flex-col justify-between">
+<div>
+<span class="material-symbols-outlined text-on-surface-variant mb-4">architecture</span>
+<h5 class="text-sm font-bold text-white">Poly-Optimization</h5>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Automatic mesh reduction based on camera distance parameters.</p>
+</div>
+<div class="col-span-1 rounded-xl bg-surface-container border border-outline-variant/10 p-6 flex flex-col justify-between">
+<div>
+<span class="material-symbols-outlined text-on-surface-variant mb-4">texture</span>
+<h5 class="text-sm font-bold text-white">Material Sync</h5>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Direct bridge to Octane and Redshift material libraries.</p>
+</div>
+<div class="col-span-2 rounded-xl bg-surface-container border border-outline-variant/10 p-6 flex items-center gap-6">
+<div class="flex-shrink-0 w-24 h-24 rounded-lg bg-surface-container-low border border-outline-variant/20 overflow-hidden">
+<img alt="Texture close-up" class="w-full h-full object-cover grayscale brightness-75" data-alt="Macro photography of brushed titanium surface with microscopic scratches and industrial metallic texture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKQv6EMx-quUTV9xWXf9ThZDrtUcZnEF161Agsr55UkFVyUru31VahybHOQ2dmKs5XKrCqsiGVhjvsvx_RUToo5PHEAm1QvBFsM_SzrsQQpZBgi48_1TflFY1KXvu5bkZl2G51_3YOfmPZoqqkiq0rofLKRtL7Pt3TWv-atRcLzDCt37pB2-PrN2TIO2y3-jZPKwgANxNmT_Y9ekwaEsg4dfnkoC0cpXBegw2P2H0vmDHpQWoGQM_77ysQFjqJg42wz5NAVoyFVSM"/>
+</div>
+<div>
+<h4 class="text-sm font-bold text-white mb-2">Advanced Shading Node</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed max-w-sm">Generating PBR maps from textual descriptions. Using the Graphite design spectrum for maximum precision in viewport shadows.</p>
+<div class="mt-4 flex gap-2">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high border border-outline-variant/20 text-[9px] font-bold text-on-surface-variant">8K_READY</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high border border-outline-variant/20 text-[9px] font-bold text-on-surface-variant">UV_UNWRAPPED</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
+
+<!-- 3D Technical Glossary (Graphite) -->
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=JetBrains+Mono:wght@100..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "surface-container-low": "#1a1c1e",
+                "on-tertiary": "#191c1f",
+                "on-secondary-fixed": "#1a1c1f",
+                "on-error-container": "#ffdad6",
+                "on-primary-fixed-variant": "#e2e2e2",
+                "primary-fixed-dim": "#454747",
+                "primary": "#ffffff",
+                "on-primary": "#1a1c1c",
+                "on-primary-fixed": "#ffffff",
+                "surface": "#121416",
+                "surface-bright": "#37393b",
+                "error-container": "#93000a",
+                "inverse-primary": "#5d5f5f",
+                "surface-variant": "#333537",
+                "on-primary-container": "#000000",
+                "secondary-fixed": "#c6c6ca",
+                "error": "#ffb4ab",
+                "background": "#121416",
+                "surface-container": "#1e2022",
+                "secondary": "#c6c6ca",
+                "surface-container-lowest": "#0c0e10",
+                "on-surface-variant": "#c6c6c6",
+                "on-tertiary-fixed": "#ffffff",
+                "on-secondary": "#1a1c1f",
+                "surface-container-high": "#282a2c",
+                "inverse-surface": "#e2e2e5",
+                "tertiary-fixed-dim": "#44474b",
+                "tertiary-container": "#8e9195",
+                "secondary-fixed-dim": "#aaabaf",
+                "on-secondary-container": "#e2e2e6",
+                "tertiary-fixed": "#5c5f63",
+                "on-error": "#690005",
+                "on-background": "#e2e2e5",
+                "on-surface": "#e2e2e5",
+                "outline": "#919191",
+                "surface-dim": "#121416",
+                "surface-container-highest": "#333537",
+                "outline-variant": "#474747",
+                "primary-container": "#d4d4d4",
+                "surface-tint": "#c6c6c6",
+                "on-secondary-fixed-variant": "#3a3b3f",
+                "inverse-on-surface": "#2f3133",
+                "primary-fixed": "#5d5f5f",
+                "secondary-container": "#45474a",
+                "on-tertiary-fixed-variant": "#e1e2e7",
+                "tertiary": "#e1e2e7",
+                "on-tertiary-container": "#000000"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+            },
+            "fontFamily": {
+                "headline": ["Inter"],
+                "body": ["Inter"],
+                "label": ["Inter"],
+                "mono": ["JetBrains Mono"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #121416;
+            color: #e2e2e5;
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #333537;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="overflow-hidden">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-screen w-64 z-50 bg-[#1A1C1E] flex flex-col py-8 px-4 gap-y-6 font-['Inter'] text-[13px] font-medium">
+<div class="mb-4">
+<h1 class="text-xl font-bold tracking-widest text-white">ENGINE_CORE</h1>
+<p class="text-[10px] text-on-surface-variant tracking-widest mt-1 opacity-60">v2.4.0 Precision</p>
+</div>
+<nav class="flex flex-col gap-y-1">
+<a class="flex items-center gap-x-3 px-3 py-2.5 rounded-md text-[#C6C6CA] hover:bg-[#1E2022] hover:text-white transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined text-[20px]">terminal</span>
+<span>Prompt Converter</span>
+</a>
+<a class="flex items-center gap-x-3 px-3 py-2.5 rounded-md text-white bg-[#1E2022] font-semibold translate-x-1" href="#">
+<span class="material-symbols-outlined text-[20px]">menu_book</span>
+<span>3D Glossary</span>
+</a>
+<a class="flex items-center gap-x-3 px-3 py-2.5 rounded-md text-[#C6C6CA] hover:bg-[#1E2022] hover:text-white transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined text-[20px]">view_in_ar</span>
+<span>Asset Library</span>
+</a>
+<a class="flex items-center gap-x-3 px-3 py-2.5 rounded-md text-[#C6C6CA] hover:bg-[#1E2022] hover:text-white transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined text-[20px]">history</span>
+<span>Project History</span>
+</a>
+</nav>
+<div class="mt-auto">
+<button class="w-full py-3 bg-white text-[#1A1C1C] font-bold rounded-md flex items-center justify-center gap-x-2 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Workspace
+            </button>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 h-16 z-40 flex items-center justify-between px-8 w-[calc(100%-16rem)] ml-64 bg-[#121416] border-b border-white/5 font-['Inter'] text-sm tracking-tight">
+<div class="flex items-center gap-x-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-md py-2 pl-10 text-xs focus:ring-1 focus:ring-white transition-all" placeholder="Search technical terminology..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-x-6">
+<div class="flex gap-x-4">
+<button class="text-[#C6C6CA] hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="text-[#C6C6CA] hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+</div>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-white/10">
+<img alt="User avatar" class="w-full h-full object-cover" data-alt="Close-up portrait of a professional technical architect with neutral expression and sharp lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0ER4QPgU2SoXh3bEMhv0NdtyTyBxOKLIGlwk_AQrJuecJdfEoH2CdTMgz2JeUAC8U1GPxyXSDSSUYyj6NGkbnvqBcsiXfAgaXpeaH1GwoOd_WFAnGlfBfKI1-kOGv_4hEyJF9I2KM6n6S2hst0qxbTsoR_1qk9JhC7IkGOhnLDKWWPjGA7T6Skpn6rW9HSBhzRq7_dF-rgOPR-29rxm4Ws1M9uVPLiLnEEZoncMLXSYxlXD2vc3na12yfNCAJupW7vMwINbcR-rY"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-16 h-[calc(100vh-4rem)] flex overflow-hidden">
+<!-- Glossary Sidebar (Terms List) -->
+<aside class="w-80 h-full bg-surface-container-low flex flex-col border-r border-white/5 overflow-hidden">
+<div class="p-6">
+<h2 class="text-xs font-bold tracking-widest text-on-surface-variant uppercase mb-4">Categories</h2>
+<div class="flex flex-wrap gap-2">
+<span class="px-2.5 py-1 rounded bg-surface-container text-[10px] font-bold text-white uppercase tracking-wider border border-white/10">Rendering</span>
+<span class="px-2.5 py-1 rounded bg-transparent text-[10px] font-bold text-on-surface-variant uppercase tracking-wider border border-white/5 hover:border-white/20 transition-all cursor-pointer">Modeling</span>
+<span class="px-2.5 py-1 rounded bg-transparent text-[10px] font-bold text-on-surface-variant uppercase tracking-wider border border-white/5 hover:border-white/20 transition-all cursor-pointer">Shaders</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-1">
+<!-- Term Item Active -->
+<div class="p-4 rounded-md bg-surface-container border-l-2 border-white group cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<span class="text-white font-bold text-sm tracking-tight">Volumetric Lighting</span>
+<span class="material-symbols-outlined text-[16px] text-white">star</span>
+</div>
+<p class="text-on-surface-variant text-[11px] leading-relaxed line-clamp-2">Light scattering effect caused by particles in the atmosphere...</p>
+</div>
+<!-- Term Item -->
+<div class="p-4 rounded-md hover:bg-surface-container transition-all group cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<span class="text-[#C6C6CA] group-hover:text-white font-medium text-sm tracking-tight transition-colors">Ray Tracing</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">star</span>
+</div>
+<p class="text-on-surface-variant text-[11px] leading-relaxed line-clamp-2">A rendering technique that simulates the physical behavior of light...</p>
+</div>
+<!-- Term Item -->
+<div class="p-4 rounded-md hover:bg-surface-container transition-all group cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<span class="text-[#C6C6CA] group-hover:text-white font-medium text-sm tracking-tight transition-colors">PBR (Physically Based)</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">star</span>
+</div>
+<p class="text-on-surface-variant text-[11px] leading-relaxed line-clamp-2">A method of shading and rendering that provides a more accurate representation...</p>
+</div>
+<!-- Term Item -->
+<div class="p-4 rounded-md hover:bg-surface-container transition-all group cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<span class="text-[#C6C6CA] group-hover:text-white font-medium text-sm tracking-tight transition-colors">Ambient Occlusion</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">star</span>
+</div>
+<p class="text-on-surface-variant text-[11px] leading-relaxed line-clamp-2">Calculation of how exposed each point in a scene is to ambient lighting...</p>
+</div>
+<!-- Term Item -->
+<div class="p-4 rounded-md hover:bg-surface-container transition-all group cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<span class="text-[#C6C6CA] group-hover:text-white font-medium text-sm tracking-tight transition-colors">Subsurface Scattering</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">star</span>
+</div>
+<p class="text-on-surface-variant text-[11px] leading-relaxed line-clamp-2">Mechanism of light transport in which light penetrates the surface...</p>
+</div>
+<!-- Term Item -->
+<div class="p-4 rounded-md hover:bg-surface-container transition-all group cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<span class="text-[#C6C6CA] group-hover:text-white font-medium text-sm tracking-tight transition-colors">Global Illumination</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">star</span>
+</div>
+<p class="text-on-surface-variant text-[11px] leading-relaxed line-clamp-2">Algorithms used in 3D computer graphics to add more realistic lighting...</p>
+</div>
+</div>
+</aside>
+<!-- Detailed Term View -->
+<section class="flex-1 overflow-y-auto custom-scrollbar bg-surface p-12">
+<div class="max-w-4xl mx-auto space-y-12">
+<!-- Hero Section for Term -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+<div>
+<div class="flex items-center gap-x-3 mb-4">
+<span class="text-xs font-mono text-outline uppercase tracking-widest">Technique // 042</span>
+<div class="h-[1px] w-8 bg-outline-variant"></div>
+</div>
+<h1 class="text-5xl font-black text-white tracking-tighter mb-6">Volumetric Lighting</h1>
+<p class="text-on-surface-variant text-base leading-relaxed mb-8">
+                            Also known as "God Rays," this technique renders light beams that appear to be passing through a volume of particulates—such as dust, fog, or smoke—to create atmospheric depth and dramatic tension in a 3D scene.
+                        </p>
+<div class="flex gap-x-4">
+<button class="px-6 py-3 bg-white text-black font-bold text-sm rounded-md flex items-center gap-x-2 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+                                Add to Prompt
+                            </button>
+<button class="px-6 py-3 bg-secondary-container text-white font-bold text-sm rounded-md hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-[18px]">share</span>
+</button>
+</div>
+</div>
+<div class="relative group">
+<div class="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent rounded-xl pointer-events-none"></div>
+<div class="aspect-square bg-surface-container rounded-xl overflow-hidden border border-white/5">
+<img class="w-full h-full object-cover grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" data-alt="Dramatic 3D render of a dark industrial corridor with sharp volumetric light beams cutting through dense fog and dust" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAvaVqY79boE9oQLUBpx7jkAFDQwIZl3rFp6awGww_jqK-egqywW3AuWJdO71hTS9SjnzpQ5zD-T52u81Osnb-hKmrurBX9g3JkrTO9qbrWMfmIIsuepJ4NOyOD_Ez_s-cmnqyI_ELUktxbkLIcGBdVn0p_X0qRrFuR3gtBQw-oXVYATXgbEBz6HGdEEZcQAYZ9bR8RN7uy3jqET1Pn9LfLeWg0HSKNbJVCO-KiaQ37qcIKJFaRVu-lSVwvBcnaifMWTh4QK6CBDk"/>
+</div>
+<div class="absolute -bottom-4 -right-4 p-4 bg-surface-container-highest rounded-lg border border-white/10 shadow-2xl">
+<p class="text-[10px] font-mono text-white opacity-40">SAMPLE_RENDER_ID: 9823-X</p>
+</div>
+</div>
+</div>
+<!-- Bento Info Grid -->
+<div class="grid grid-cols-3 gap-6">
+<!-- Tech Specs -->
+<div class="col-span-2 bg-surface-container p-8 rounded-xl border border-white/5 space-y-6">
+<h3 class="text-sm font-bold tracking-widest uppercase text-white/40">Technical Parameters</h3>
+<div class="grid grid-cols-2 gap-8">
+<div class="space-y-2">
+<p class="text-xs text-on-surface-variant font-mono uppercase">Scattering Anisotropy</p>
+<div class="h-1.5 w-full bg-surface rounded-full overflow-hidden">
+<div class="h-full bg-white w-3/4"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant text-right">0.75 High Directionality</p>
+</div>
+<div class="space-y-2">
+<p class="text-xs text-on-surface-variant font-mono uppercase">Extinction Coefficient</p>
+<div class="h-1.5 w-full bg-surface rounded-full overflow-hidden">
+<div class="h-full bg-white w-1/3"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant text-right">0.12 Subtle Density</p>
+</div>
+</div>
+<div class="pt-4 space-y-3">
+<div class="flex justify-between items-center py-3 border-t border-white/5">
+<span class="text-xs text-white/80">Shadow Filtering</span>
+<span class="text-xs font-mono text-white bg-white/10 px-2 py-0.5 rounded">Exponential Variance</span>
+</div>
+<div class="flex justify-between items-center py-3 border-t border-white/5">
+<span class="text-xs text-white/80">Step Count</span>
+<span class="text-xs font-mono text-white bg-white/10 px-2 py-0.5 rounded">128 Slices</span>
+</div>
+</div>
+</div>
+<!-- Team Tips Card -->
+<div class="bg-surface-container-highest p-8 rounded-xl border border-white/10 relative overflow-hidden flex flex-col justify-between">
+<span class="material-symbols-outlined absolute -top-4 -right-4 text-9xl text-white/5 rotate-12">lightbulb</span>
+<div class="relative z-10">
+<h3 class="text-sm font-bold tracking-widest uppercase text-white mb-6">Team Tips</h3>
+<div class="space-y-4">
+<div class="flex gap-x-3">
+<div class="w-1 h-1 rounded-full bg-white mt-1.5 shrink-0"></div>
+<p class="text-xs leading-relaxed text-[#C6C6CA]">Combine with <span class="text-white font-bold">Lumen</span> for real-time bounce light interaction.</p>
+</div>
+<div class="flex gap-x-3">
+<div class="w-1 h-1 rounded-full bg-white mt-1.5 shrink-0"></div>
+<p class="text-xs leading-relaxed text-[#C6C6CA]">Keep the "Albedo" of the volume near 0.9 for realistic light transmission.</p>
+</div>
+</div>
+</div>
+<button class="mt-8 text-[11px] font-bold text-white uppercase tracking-widest flex items-center gap-x-2 group">
+                            Read Documentation
+                            <span class="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Prompt Example Section -->
+<div class="bg-surface-container-low p-8 rounded-xl border border-white/5 border-dashed">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-sm font-bold tracking-widest uppercase text-white/60">Prompt Implementation</h3>
+<span class="px-2 py-1 bg-white/5 rounded text-[10px] text-white/40 uppercase font-mono">Engine: Unreal 5.4</span>
+</div>
+<div class="bg-surface p-6 rounded-md border border-white/5">
+<p class="font-mono text-sm leading-relaxed text-[#C6C6CA]">
+<span class="text-white">/render_scene</span> cinematic_lighting --type <span class="text-white font-bold">"volumetric"</span> --density 0.45 --scattering 0.8 --light_source "top_down_spotlight" --dust_motes true --mood "noire"
+                        </p>
+</div>
+<div class="mt-4 flex justify-end">
+<button class="flex items-center gap-x-2 text-[10px] font-bold uppercase tracking-tighter text-on-surface-variant hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+                            Copy Syntax
+                        </button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Contextual Floating Action -->
+<button class="fixed bottom-8 right-8 h-14 px-6 bg-white text-black font-black rounded-md shadow-[0_20px_40px_rgba(0,0,0,0.5)] flex items-center gap-x-3 hover:scale-105 transition-transform active:scale-95 z-50">
+<span class="material-symbols-outlined">auto_fix</span>
+        GENERATE ASSET
+    </button>
+</body></html>
